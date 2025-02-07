@@ -1,4 +1,4 @@
-// File: /home/gs/git/annotator/frontend/app/signup/page.tsx
+// File: /home/gs/git/annotator/app/signup/page.tsx
 import * as entry from '../../../../app/signup/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

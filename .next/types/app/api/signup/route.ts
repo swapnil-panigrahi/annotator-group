@@ -1,4 +1,4 @@
-// File: /home/gs/git/annotator/frontend/app/api/signup/route.ts
+// File: /home/gs/git/annotator/app/api/signup/route.ts
 import * as entry from '../../../../../app/api/signup/route.js'
 import type { NextRequest } from 'next/server.js'
 
