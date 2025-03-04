@@ -1,13 +1,12 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { PrismaClient, Prisma } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
-
-const prisma = new PrismaClient()
 
 const LabelSchema = z.object({
   text: z.string(),

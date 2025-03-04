@@ -1,13 +1,10 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
-
-// Initialize Prisma Client
-const prisma = new PrismaClient()
 
 export async function GET() {
   try {
