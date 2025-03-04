@@ -1,0 +1,9 @@
+-- CreateEnum
+CREATE TYPE "Level" AS ENUM ('BEGINNER', 'INTERMEDIATE', 'EXPERT', 'TECHNICAL');
+
+-- CreateEnum
+CREATE TYPE "Model" AS ENUM ('GPT4', 'GPT35', 'CLAUDE2', 'CLAUDE3', 'LLAMA2', 'MISTRAL');
+
+-- AlterTable
+ALTER TABLE "TextSummary" ADD COLUMN     "level" "Level" NOT NULL DEFAULT 'BEGINNER',
+ADD COLUMN     "model" "Model" NOT NULL DEFAULT 'GPT35';
