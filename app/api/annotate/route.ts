@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server'
 import { PrismaClient, Prisma } from '@prisma/client'
 import { z } from 'zod'
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic'
+
 const prisma = new PrismaClient()
 
 const LabelSchema = z.object({
@@ -72,7 +75,7 @@ export async function POST(request: Request) {
           layness: validatedData.layness,
           factuality: validatedData.factuality,
           usefulness: validatedData.usefulness,
-          labels: validatedData.labels as unknown as Prisma.JsonValue
+          labels: validatedData.labels as Prisma.InputJsonValue
         },
         create: {
           userId: session.user.id,
@@ -81,7 +84,7 @@ export async function POST(request: Request) {
           layness: validatedData.layness,
           factuality: validatedData.factuality,
           usefulness: validatedData.usefulness,
-          labels: validatedData.labels as unknown as Prisma.JsonValue
+          labels: validatedData.labels as Prisma.InputJsonValue
         }
       })
 
