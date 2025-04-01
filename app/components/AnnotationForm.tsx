@@ -12,6 +12,7 @@ interface AnnotationFormProps {
   textId: string
   onAnnotationChange: (annotation: typeof initialState) => void
   initialAnnotation: typeof initialState
+  isAllAnnotated: boolean
   labels?: Array<{
     text: string
     type: string
@@ -65,7 +66,7 @@ Score 5: The summary removes jargon or uses simple synonyms for them. If it cann
   },
 ]
 
-export default function AnnotationForm({ textId, onAnnotationChange, initialAnnotation, labels }: AnnotationFormProps) {
+export default function AnnotationForm({ textId, onAnnotationChange, initialAnnotation, isAllAnnotated, labels }: AnnotationFormProps) {
   const [ratings, setRatings] = useState(initialAnnotation)
 
   useEffect(() => {
@@ -116,6 +117,14 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
     }
   }
 
+  const isFormComplete = () => {
+    // Only check the numeric rating fields, ignore the labels array
+    const ratingFields = ['comprehensiveness', 'layness', 'factuality', 'usefulness'];
+    const complete = ratingFields.every(field => ratings[field] >= 1 && ratings[field] <= 5);
+    console.log('Ratings:', ratings, 'Complete:', complete, 'All Annotated:', isAllAnnotated);
+    return complete && isAllAnnotated;
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -154,8 +163,14 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
           </div>
         ))}
       </div>
-      <Button type="submit" className="w-full">
-        Submit Annotation
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={!isFormComplete()}
+        variant={isFormComplete() ? "default" : "secondary"}
+      >
+        Submit Annotation 
+        {!isFormComplete() && ` (${Object.values(ratings).every(rating => rating >= 1 && rating <= 5) ? 'Waiting for all summaries' : 'Complete all ratings'})`}
       </Button>
     </form>
   )

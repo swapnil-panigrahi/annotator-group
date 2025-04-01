@@ -245,7 +245,17 @@ export default function AnnotatePage() {
     usefulness: 0,
   }
 
-  const annotatedCount = annotations.filter((a) => Object.values(a).some((v) => v !== 0)).length
+  const annotatedCount = annotations.filter((a) => {
+    const isComplete = 
+      a.comprehensiveness >= 1 && a.comprehensiveness <= 5 &&
+      a.layness >= 1 && a.layness <= 5 &&
+      a.factuality >= 1 && a.factuality <= 5 &&
+      a.usefulness >= 1 && a.usefulness <= 5;
+    console.log('Annotation:', a, 'Is Complete:', isComplete);
+    return isComplete;
+  }).length;
+
+  console.log('Total annotated:', annotatedCount, 'Total summaries:', summaries.length);
 
   return (
     <div className="flex flex-col h-screen">
@@ -313,6 +323,7 @@ export default function AnnotatePage() {
           textId={currentSummary.id}
           onAnnotationChange={handleAnnotationChange}
           initialAnnotation={currentAnnotation}
+          isAllAnnotated={annotatedCount === summaries.length}
           labels={currentAnnotation.labels}
         />
       </footer>
