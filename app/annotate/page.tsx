@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, LogOut } from "lucide-react"
 import TextDisplay from "../components/TextDisplay"
 import SummaryDisplay from "../components/SummaryDisplay"
 import AnnotationForm from "../components/AnnotationForm"
@@ -44,7 +44,13 @@ export default function AnnotatePage() {
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true
+      }
+    }
   )
 
   const fetchUserSummaries = async () => {
@@ -220,6 +226,12 @@ export default function AnnotatePage() {
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">No Summaries Assigned</h2>
           <p className="text-gray-600">You don't have any summaries assigned to you yet.</p>
+          <Button 
+            onClick={handleLogout}
+            disabled={loading}
+          >
+            {loading ? "Logging out..." : "Logout"}
+          </Button>
         </div>
       </div>
     )

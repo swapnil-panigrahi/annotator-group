@@ -5,3 +5,4 @@
 5. Get rid of some space on the top.
 6. Add guidelines link.
 7. Fix the error while registering a new user.
+8. maybe fix auth (don't do it in middleware)
