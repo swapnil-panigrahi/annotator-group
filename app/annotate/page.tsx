@@ -245,6 +245,7 @@ export default function AnnotatePage() {
     usefulness: 0,
   }
 
+<<<<<<< HEAD
   const annotatedCount = annotations.filter((a) => {
     const isComplete = 
       a.comprehensiveness >= 1 && a.comprehensiveness <= 5 &&
@@ -257,6 +258,9 @@ export default function AnnotatePage() {
 
   console.log('Total annotated:', annotatedCount, 'Total summaries:', summaries.length);
 
+=======
+  const annotatedCount = annotations.filter((a) => Object.values(a).some((v) => v !== 0 && typeof(v) === "number")).length
+>>>>>>> 7fa7af9 (Refactor AnnotationForm component to simplify aspect descriptions and improve clarity in user feedback.)
   return (
     <div className="flex flex-col h-screen">
       <header className="bg-gray-100 p-4 sticky top-0 z-10 flex justify-between items-center">

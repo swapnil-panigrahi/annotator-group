@@ -40,11 +40,7 @@ const aspects: AspectRating[] = [
     name: "Comprehensiveness",
     stateKey: "comprehensiveness",
     label: "Comprehensiveness",
-    description: `Score 1: There is not much difference between the plain text summary and the original abstract.
-Score 2: The plain text summary omits a few sentences that include jargon or omits a few words in sentences. It becomes easier to read but does not truly simplify the content.
-Score 3: The summary is a mix of jargon and simple terms, as well as simple and complex sentences, along with some definitions. Laypersons may understand the main points but could find specific terms or sentences confusing.
-Score 4: The summary is overall easy to understand, with the occasional presence of a complex sentence or medical terms that are not explained to the reader.
-Score 5: The summary removes jargon or uses simple synonyms for them. If it cannot do either, it adds context for the evaluator to grasp the complex term. It uses simple, straightforward sentences or makes use of examples, making it easy for anyone to understand.`,
+    description: "Is all necessary information captured in the summary?"
   },
   {
     name: "Layness",
