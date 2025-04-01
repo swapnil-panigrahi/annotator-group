@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SummaryDisplayProps {
   summary: string;
@@ -138,15 +139,17 @@ export default function SummaryDisplay({ summary, onAddLabel, onDeleteLabel, lab
   };
 
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-4 h-full">
       <div className="flex-1">
         <h2 className="text-xl font-semibold mb-4">Summary</h2>
-        <div 
-          className="summary-text text-lg leading-relaxed p-4 border rounded-lg bg-white min-h-[200px]"
-          onMouseUp={handleSelection}
-        >
-          {labels.length > 0 ? renderHighlightedText() : summary}
-        </div>
+        <ScrollArea className="h-[calc(100%-2rem)]">
+          <div 
+            className="summary-text text-lg leading-relaxed p-4 border rounded-lg bg-white"
+            onMouseUp={handleSelection}
+          >
+            {labels.length > 0 ? renderHighlightedText() : summary}
+          </div>
+        </ScrollArea>
 
         {selectedText && (
           <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-lg p-4 border w-[600px] z-50">
@@ -168,34 +171,38 @@ export default function SummaryDisplay({ summary, onAddLabel, onDeleteLabel, lab
         )}
       </div>
 
-      <div className="w-64 space-y-2">
-        <h3 className="font-semibold">Labels:</h3>
-        {labels.map((label, index) => (
-          <div 
-            key={index}
-            className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
-            onMouseEnter={() => setHighlightedLabel(index)}
-            onMouseLeave={() => setHighlightedLabel(null)}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="px-2 py-1 bg-blue-100 rounded text-sm mb-1 truncate">{label.type}</div>
-              <div className="text-sm truncate">"{label.text}"</div>
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteLabel?.(index);
-              }}
-              className="text-red-500 hover:text-red-700 p-1"
-              title="Delete label"
-            >
-              ×
-            </button>
+      <div className="w-64">
+        <h3 className="font-semibold mb-2">Labels:</h3>
+        <ScrollArea className="h-[calc(100%-2rem)]">
+          <div className="pr-4 space-y-2">
+            {labels.map((label, index) => (
+              <div 
+                key={index}
+                className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                onMouseEnter={() => setHighlightedLabel(index)}
+                onMouseLeave={() => setHighlightedLabel(null)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="px-2 py-1 bg-blue-100 rounded text-sm mb-1 truncate">{label.type}</div>
+                  <div className="text-sm truncate">"{label.text}"</div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteLabel?.(index);
+                  }}
+                  className="text-red-500 hover:text-red-700 p-1"
+                  title="Delete label"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {labels.length === 0 && (
+              <div className="text-gray-500 text-sm italic">No labels added yet</div>
+            )}
           </div>
-        ))}
-        {labels.length === 0 && (
-          <div className="text-gray-500 text-sm italic">No labels added yet</div>
-        )}
+        </ScrollArea>
       </div>
     </div>
   );
