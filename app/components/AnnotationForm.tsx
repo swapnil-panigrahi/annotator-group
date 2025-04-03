@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
@@ -8,31 +8,44 @@ import { InfoIcon as InfoCircle } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type React from "react"
 
+// Define Label type for consistency
+interface Label {
+  text: string;
+  type: string;
+  startIndex: number;
+  endIndex: number;
+  correctedText?: string;
+}
+
+// Define Annotation type
+interface Annotation {
+  comprehensiveness: number;
+  layness: number;
+  factuality: number;
+  usefulness: number;
+  labels: Label[];
+}
+
 interface AnnotationFormProps {
   textId: string
-  onAnnotationChange: (annotation: typeof initialState) => void
-  initialAnnotation: typeof initialState
-  labels?: Array<{
-    text: string
-    type: string
-    startIndex: number
-    endIndex: number
-    correctedText?: string
-  }>
+  onAnnotationChange: (annotation: Annotation) => void
+  initialAnnotation: Annotation
+  labels?: Label[]
 }
 
 interface AspectRating {
   name: string
-  stateKey: keyof typeof initialState
+  stateKey: keyof Annotation
   label: string
   description: string
 }
 
-const initialState = {
+const initialState: Annotation = {
   comprehensiveness: 0,
   layness: 0,
   factuality: 0,
   usefulness: 0,
+  labels: []
 }
 
 const aspects: AspectRating[] = [
@@ -68,21 +81,37 @@ Score 5: The summary removes jargon or uses simple synonyms for them. If it cann
 
 export default function AnnotationForm({ textId, onAnnotationChange, initialAnnotation, labels }: AnnotationFormProps) {
   const [ratings, setRatings] = useState(initialAnnotation)
+  const isFirstRender = useRef(true)
+  const userChangedRating = useRef(false)
 
+  // Sync ratings when initialAnnotation changes (from parent)
   useEffect(() => {
     setRatings(initialAnnotation)
+    userChangedRating.current = false
   }, [initialAnnotation])
 
   const handleRatingChange = useCallback(
-    (aspect: keyof typeof initialState, rating: number) => {
+    (aspect: keyof Annotation, rating: number) => {
+      userChangedRating.current = true
       setRatings((prev) => {
-        const newRatings = { ...prev, [aspect]: rating }
-        onAnnotationChange(newRatings)
-        return newRatings
+        return { ...prev, [aspect]: rating }
       })
     },
-    [onAnnotationChange],
+    [],
   )
+  
+  // Use separate effect to call onAnnotationChange when ratings change
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+
+    // Only notify parent component if the user actually changed something
+    if (userChangedRating.current) {
+      onAnnotationChange(ratings)
+    }
+  }, [ratings, onAnnotationChange])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

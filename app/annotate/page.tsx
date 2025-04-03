@@ -10,39 +10,51 @@ import SummaryDisplay from "../components/SummaryDisplay"
 import AnnotationForm from "../components/AnnotationForm"
 import NavigationBar from "../components/NavigationBar"
 import { createBrowserClient } from '@supabase/ssr'
+import { number } from "zod"
+
+interface Label {
+  text: string;
+  type: string;
+  startIndex: number;
+  endIndex: number;
+  correctedText?: string;
+}
+
+interface Annotation {
+  comprehensiveness: number;
+  layness: number;
+  factuality: number;
+  usefulness: number;
+  labels: Label[];
+}
 
 interface Summary {
-  id: string
-  text: string
-  summary: string
-  pmid?: string
-  assigned_at: string
-  completed: boolean
+  id: string;
+  text: string;
+  summary: string;
+  pmid?: string;
+  assigned_at: string;
+  completed: boolean;
 }
 
 export default function AnnotatePage() {
   const router = useRouter()
   const [summaries, setSummaries] = useState<Summary[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingAnnotations, setLoadingAnnotations] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
+  const [allAnnotationsLoaded, setAllAnnotationsLoaded] = useState(false)
 
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [annotations, setAnnotations] = useState<
-    Array<{
-      comprehensiveness: number
-      layness: number
-      factuality: number
-      usefulness: number
-      labels?: Array<{
-        text: string
-        type: string
-        startIndex: number
-        endIndex: number
-        correctedText: string
-      }>
-    }>
-  >([])
+  const [annotations, setAnnotations] = useState<Annotation[]>([])
+  const [currentAnnotation, setCurrentAnnotation] = useState<Annotation>({
+    comprehensiveness: 0,
+    layness: 0,
+    factuality: 0,
+    usefulness: 0,
+    labels: []
+  })
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,7 +67,7 @@ export default function AnnotatePage() {
     }
   )
 
-  const fetchUserSummaries = async () => {
+  const fetchUserSummaries = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       
@@ -90,25 +102,132 @@ export default function AnnotatePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router, supabase.auth])
 
-  useEffect(() => {
-    fetchUserSummaries()
-  }, [])
+  const fetchAllAnnotations = useCallback(async () => {
+    setLoadingAnnotations(true);
+    try {
+      console.log('Fetching all annotations...');
+      
+      const response = await fetch('/api/annotations', {
+        credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
 
-  useEffect(() => {
-    if (summaries.length > 0) {
-      setAnnotations(
-        summaries.map(() => ({
-          comprehensiveness: 0,
-          layness: 0,
-          factuality: 0,
-          usefulness: 0,
-          labels: []
-        })),
-      )
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.log('User not authenticated, redirecting to login...');
+          router.push('/login');
+          return;
+        }
+        console.error('Failed to fetch annotations, status:', response.status);
+        return;
+      }
+
+      // Clone the response and log the raw JSON to debug
+      const responseClone = response.clone();
+      const rawData = await responseClone.text();
+      console.log('Raw annotation response:', rawData);
+      
+      const data = await response.json();
+      console.log('Parsed annotation data:', data);
+      
+      const userAnnotations = data.annotations || {};
+      
+      console.log('Loaded all annotations:', userAnnotations);
+      console.log('Annotation keys:', Object.keys(userAnnotations));
+      if (Object.keys(userAnnotations).length > 0) {
+        console.log('First annotation sample:', Object.values(userAnnotations)[0]);
+      } else {
+        console.log('No annotations found in response');
+      }
+      
+      setAllAnnotationsLoaded(true);
+      
+      return userAnnotations;
+    } catch (err) {
+      console.error("Error fetching annotations:", err);
+      return {};
+    } finally {
+      setLoadingAnnotations(false);
     }
-  }, [summaries])
+  }, [router]);
+
+  // Fetch both summaries and annotations on mount
+  useEffect(() => {
+    const loadData = async () => {
+      console.log('Starting to load data...');
+      
+      try {
+        // Step 1: Fetch summaries from the API
+        await fetchUserSummaries();
+        // We do not use the summaries state here directly since it might not be updated yet
+        
+        // Step 2: Fetch all annotations in a separate effect that runs when summaries change
+      } catch (error) {
+        console.error("Error in initial data loading:", error);
+      }
+    };
+    
+    loadData();
+  }, [fetchUserSummaries]);
+  
+  // This effect runs when summaries change
+  useEffect(() => {
+    const loadAnnotations = async () => {
+      if (summaries.length === 0) {
+        console.log('No summaries available yet, skipping annotation loading');
+        return;
+      }
+      
+      console.log('Summaries are now available:', summaries.length);
+      
+      // Now that we have summaries, fetch annotations
+      const userAnnotations = await fetchAllAnnotations();
+      console.log('User annotations after fetch:', userAnnotations);
+      
+      console.log('Creating initial annotations for', summaries.length, 'summaries');
+      // Initialize annotations array with default values for all summaries
+      const initialAnnotations = summaries.map((summary) => {
+        // Use existing annotation if available, otherwise use default values
+        const existingAnnotation = userAnnotations?.[summary.id];
+        console.log(`Checking annotation for summary ${summary.id}:`, existingAnnotation);
+        
+        if (existingAnnotation) {
+          console.log('Using existing annotation');
+          return {
+            comprehensiveness: existingAnnotation.comprehensiveness || 0,
+            layness: existingAnnotation.layness || 0,
+            factuality: existingAnnotation.factuality || 0,
+            usefulness: existingAnnotation.usefulness || 0,
+            labels: existingAnnotation.labels || []
+          };
+        } else {
+          console.log('Creating new annotation');
+          return {
+            comprehensiveness: 0,
+            layness: 0,
+            factuality: 0,
+            usefulness: 0,
+            labels: []
+          };
+        }
+      });
+      
+      console.log('Setting annotations:', initialAnnotations);
+      setAnnotations(initialAnnotations);
+      
+      // Initialize currentAnnotation with the first annotation
+      if (initialAnnotations.length > 0) {
+        console.log('Setting current annotation:', initialAnnotations[0]);
+        setCurrentAnnotation(initialAnnotations[0]);
+      }
+    };
+    
+    loadAnnotations();
+  }, [summaries, fetchAllAnnotations]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -123,34 +242,104 @@ export default function AnnotatePage() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [summaries.length])
 
-  const handleAnnotationChange = useCallback(
-    (newAnnotation: Omit<(typeof annotations)[0], 'labels'>) => {
-      setAnnotations((prevAnnotations) => {
-        const newAnnotations = [...prevAnnotations]
-        newAnnotations[currentIndex] = {
-          ...newAnnotation,
-          labels: prevAnnotations[currentIndex]?.labels || []
-        }
-        return newAnnotations
-      })
-    },
-    [currentIndex],
-  )
+  // Submit an annotation
+  const saveAnnotation = useCallback(async (annotation: Annotation) => {
+    // Only save if we have a valid summary and user is authenticated
+    if (!summaries.length || currentIndex < 0) return;
+    
+    const currentSummary = summaries[currentIndex];
+    
+    try {
+      const response = await fetch('/api/annotate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          textId: currentSummary.id,
+          comprehensiveness: annotation.comprehensiveness,
+          layness: annotation.layness,
+          factuality: annotation.factuality,
+          usefulness: annotation.usefulness,
+          labels: annotation.labels
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save annotation');
+      }
+
+      console.log('Annotation saved successfully');
+    } catch (err) {
+      console.error("Error saving annotation:", err);
+    }
+  }, [summaries, currentIndex]);
+
+  // Wrap handleAnnotationChange in useCallback
+  const handleAnnotationChange = useCallback((annotation: Annotation) => {
+    setAnnotations((prevAnnotations) => {
+      const newAnnotations = [...prevAnnotations];
+      
+      // Make sure we have enough items in the array
+      while (newAnnotations.length <= currentIndex) {
+        newAnnotations.push({
+          comprehensiveness: 0,
+          layness: 0,
+          factuality: 0,
+          usefulness: 0,
+          labels: []
+        });
+      }
+      
+      // Update the annotation at current index
+      newAnnotations[currentIndex] = {
+        ...annotation,
+        // Ensure labels is always an array, even if missing from the annotation parameter
+        labels: annotation.labels || []
+      };
+      
+      return newAnnotations;
+    });
+    
+    // Save to DB
+    saveAnnotation(annotation);
+  }, [currentIndex, saveAnnotation]);
 
   const handleAddLabel = useCallback(
     (labelType: string, selectedText: string, startIndex: number, endIndex: number, correctedText: string) => {
       setAnnotations((prevAnnotations) => {
-        const newAnnotations = [...prevAnnotations]
-        const currentAnnotation = newAnnotations[currentIndex]
+        const newAnnotations = [...prevAnnotations];
+        
+        // Make sure we have enough items in the array
+        while (newAnnotations.length <= currentIndex) {
+          newAnnotations.push({
+            comprehensiveness: 0,
+            layness: 0,
+            factuality: 0,
+            usefulness: 0,
+            labels: []
+          });
+        }
+        
+        const annotation = newAnnotations[currentIndex] || {
+          comprehensiveness: 0,
+          layness: 0,
+          factuality: 0,
+          usefulness: 0,
+          labels: []
+        };
+        
         newAnnotations[currentIndex] = {
-          ...currentAnnotation,
+          ...annotation,
           labels: [
-            ...(currentAnnotation.labels || []),
+            ...(annotation.labels || []),
             { text: selectedText, type: labelType, startIndex, endIndex, correctedText }
           ]
-        }
-        return newAnnotations
-      })
+        };
+        
+        setCurrentAnnotation(newAnnotations[currentIndex]);
+        return newAnnotations;
+      });
     },
     [currentIndex],
   )
@@ -158,16 +347,37 @@ export default function AnnotatePage() {
   const handleDeleteLabel = useCallback(
     (labelIndex: number) => {
       setAnnotations((prevAnnotations) => {
-        const newAnnotations = [...prevAnnotations]
-        const currentAnnotation = newAnnotations[currentIndex]
-        if (currentAnnotation.labels) {
-          newAnnotations[currentIndex] = {
-            ...currentAnnotation,
-            labels: currentAnnotation.labels.filter((_, index) => index !== labelIndex)
-          }
+        const newAnnotations = [...prevAnnotations];
+        
+        // Make sure we have enough items in the array
+        while (newAnnotations.length <= currentIndex) {
+          newAnnotations.push({
+            comprehensiveness: 0,
+            layness: 0,
+            factuality: 0,
+            usefulness: 0,
+            labels: []
+          });
         }
-        return newAnnotations
-      })
+        
+        const annotation = newAnnotations[currentIndex] || {
+          comprehensiveness: 0,
+          layness: 0,
+          factuality: 0,
+          usefulness: 0,
+          labels: []
+        };
+        
+        if (annotation.labels) {
+          newAnnotations[currentIndex] = {
+            ...annotation,
+            labels: annotation.labels.filter((_, index) => index !== labelIndex)
+          };
+          setCurrentAnnotation(newAnnotations[currentIndex]);
+        }
+        
+        return newAnnotations;
+      });
     },
     [currentIndex],
   )
@@ -214,6 +424,67 @@ export default function AnnotatePage() {
     fetchUserProfile()
   }, [])
 
+  // Update this function to use our cached annotations data
+  const fetchAnnotationForSummary = useCallback(async (summaryId: string) => {
+    // Skip API call entirely since we already have all annotations cached
+    // This function is maintained for API compatibility but now just sets loading to false
+    setLoadingAnnotations(false);
+  }, []);
+
+  // Modified to better handle already loaded annotations
+  useEffect(() => {
+    if (summaries.length > 0 && currentIndex >= 0) {
+      console.log(`currentIndex changed to ${currentIndex}, updating current annotation`);
+      console.log('Current annotations array length:', annotations.length);
+      
+      // If we have annotations loaded
+      if (annotations.length > 0) {
+        // If the currentIndex is valid
+        if (currentIndex < annotations.length) {
+          console.log('Setting currentAnnotation from existing annotations:', annotations[currentIndex]);
+          setCurrentAnnotation(annotations[currentIndex]);
+        } 
+        // If we need to expand the annotations array
+        else {
+          console.log('currentIndex exceeds annotations array length, expanding array');
+          setAnnotations(prev => {
+            // Create a new array with enough elements
+            const newAnnotations = [...prev];
+            
+            // Fill in missing slots with default annotations
+            while (newAnnotations.length <= currentIndex) {
+              newAnnotations.push({
+                comprehensiveness: 0,
+                layness: 0,
+                factuality: 0,
+                usefulness: 0,
+                labels: []
+              });
+            }
+            
+            // Set the current annotation to the newly created one
+            const newCurrentAnnotation = newAnnotations[currentIndex];
+            console.log('Setting currentAnnotation to new default:', newCurrentAnnotation);
+            setCurrentAnnotation(newCurrentAnnotation);
+            
+            return newAnnotations;
+          });
+        }
+      } 
+      // If annotations aren't loaded yet, initialize with default values
+      else {
+        console.log('No annotations loaded yet, using default values');
+        setCurrentAnnotation({
+          comprehensiveness: 0,
+          layness: 0,
+          factuality: 0,
+          usefulness: 0,
+          labels: []
+        });
+      }
+    }
+  }, [currentIndex, annotations, summaries.length]);
+
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
   }
@@ -240,14 +511,12 @@ export default function AnnotatePage() {
   }
 
   const currentSummary = summaries[currentIndex]
-  const currentAnnotation = annotations[currentIndex] || {
-    comprehensiveness: 0,
-    layness: 0,
-    factuality: 0,
-    usefulness: 0,
-  }
 
-  const annotatedCount = annotations.filter((a) => Object.values(a).some((v) => v !== 0)).length
+  // Calculate annotated count by checking if all numeric fields are filled
+  const annotatedCount = annotations.filter((a) => {
+    const numericFields = [a.comprehensiveness, a.layness, a.factuality, a.usefulness];
+    return numericFields.every(v => v !== 0);
+  }).length;
 
   return (
     <div className="flex flex-col h-screen">
@@ -336,12 +605,19 @@ export default function AnnotatePage() {
             Next <ChevronRight className="ml-1 h-3 w-3" />
           </Button>
         </div>
-        <AnnotationForm
-          textId={currentSummary.id}
-          onAnnotationChange={handleAnnotationChange}
-          initialAnnotation={currentAnnotation}
-          labels={currentAnnotation.labels}
-        />
+        {loading || loadingAnnotations ? (
+          <div className="flex justify-center items-center py-6">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700"></div>
+            <span className="ml-2 text-sm text-gray-600">Loading annotations...</span>
+          </div>
+        ) : (
+          <AnnotationForm
+            textId={currentSummary.id}
+            onAnnotationChange={handleAnnotationChange}
+            initialAnnotation={currentAnnotation}
+            labels={currentAnnotation.labels}
+          />
+        )}
       </footer>
     </div>
   )

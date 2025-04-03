@@ -1,9 +1,10 @@
 [DONE] 1. Separate scroll bars for summary and labels.
 2. Add stuff like higher is better. 
 3. Grey out the submit button until all annotations are done (or maybe not).
-4. Load existing annotations.
+[DONE] 4. Load existing annotations.
 [DONE] 5. Get rid of some space on the top.
 [DONE] 6. Add guidelines link.
 [DONE] 7. Fix the error while registering a new user.
 8. maybe fix auth (don't do it in middleware)
 [DONE] 9. Add corrected text functionality.
+10. Summaries appear in random order every time you reload.
