@@ -12,12 +12,6 @@ interface AnnotationFormProps {
   textId: string
   onAnnotationChange: (annotation: typeof initialState) => void
   initialAnnotation: typeof initialState
-  labels?: Array<{
-    text: string
-    type: string
-    startIndex: number
-    endIndex: number
-  }>
 }
 
 interface AspectRating {
@@ -65,7 +59,7 @@ Score 5: The summary removes jargon or uses simple synonyms for them. If it cann
   },
 ]
 
-export default function AnnotationForm({ textId, onAnnotationChange, initialAnnotation, labels }: AnnotationFormProps) {
+export default function AnnotationForm({ textId, onAnnotationChange, initialAnnotation }: AnnotationFormProps) {
   const [ratings, setRatings] = useState(initialAnnotation)
 
   useEffect(() => {
@@ -87,28 +81,21 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
     e.preventDefault()
     if (confirm("Are you sure you want to submit this annotation?")) {
       try {
-        const response = await fetch("/api/annotate", {
+        const response = await fetch("http://localhost:5000/api/annotate", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             textId,
-            comprehensiveness: ratings.comprehensiveness,
-            layness: ratings.layness,
-            factuality: ratings.factuality,
-            usefulness: ratings.usefulness,
-            labels
+            ...ratings,
           }),
         })
-
-        const data = await response.json()
-
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to submit annotation")
+        if (response.ok) {
+          alert("Annotation submitted successfully!")
+        } else {
+          throw new Error("Failed to submit annotation")
         }
-
-        alert("Annotation submitted successfully!")
       } catch (error) {
         console.error("Error submitting annotation:", error)
         alert("Failed to submit annotation. Please try again.")
@@ -126,12 +113,12 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
               <TooltipProvider>
                 <Tooltip delayDuration={300}>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-5 w-5" type="button">
+                    <Button variant="ghost" size="icon" className="h-5 w-5 break" type="button">
                       <InfoCircle className="h-4 w-4" />
                       <span className="sr-only">Info</span>
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-sm whitespace-pre-wrap">
+                  <TooltipContent>
                     <p>{aspect.description}</p>
                   </TooltipContent>
                 </Tooltip>

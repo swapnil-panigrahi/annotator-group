@@ -245,7 +245,8 @@ export default function AnnotatePage() {
     usefulness: 0,
   }
 
-  const annotatedCount = annotations.filter((a) => Object.values(a).some((v) => v !== 0 && typeof(v) === "number")).length
+  const annotatedCount = annotations.filter((a) => Object.values(a).some((v) => v !== 0)).length
+
   return (
     <div className="flex flex-col h-screen">
       <header className="bg-gray-100 p-4 sticky top-0 z-10 flex justify-between items-center">
@@ -312,7 +313,6 @@ export default function AnnotatePage() {
           textId={currentSummary.id}
           onAnnotationChange={handleAnnotationChange}
           initialAnnotation={currentAnnotation}
-          isAllAnnotated={annotatedCount === summaries.length}
           labels={currentAnnotation.labels}
         />
       </footer>

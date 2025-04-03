@@ -12,12 +12,6 @@ interface AnnotationFormProps {
   textId: string
   onAnnotationChange: (annotation: typeof initialState) => void
   initialAnnotation: typeof initialState
-  labels?: Array<{
-    text: string
-    type: string
-    startIndex: number
-    endIndex: number
-  }>
 }
 
 interface AspectRating {
@@ -65,7 +59,7 @@ Score 5: The summary removes jargon or uses simple synonyms for them. If it cann
   },
 ]
 
-export default function AnnotationForm({ textId, onAnnotationChange, initialAnnotation, labels }: AnnotationFormProps) {
+export default function AnnotationForm({ textId, onAnnotationChange, initialAnnotation }: AnnotationFormProps) {
   const [ratings, setRatings] = useState(initialAnnotation)
 
   useEffect(() => {
@@ -98,7 +92,6 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
             layness: ratings.layness,
             factuality: ratings.factuality,
             usefulness: ratings.usefulness,
-            labels
           }),
         })
 
