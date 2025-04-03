@@ -39,6 +39,7 @@ export default function AnnotatePage() {
         type: string
         startIndex: number
         endIndex: number
+        correctedText: string
       }>
     }>
   >([])
@@ -137,7 +138,7 @@ export default function AnnotatePage() {
   )
 
   const handleAddLabel = useCallback(
-    (labelType: string, selectedText: string, startIndex: number, endIndex: number) => {
+    (labelType: string, selectedText: string, startIndex: number, endIndex: number, correctedText: string) => {
       setAnnotations((prevAnnotations) => {
         const newAnnotations = [...prevAnnotations]
         const currentAnnotation = newAnnotations[currentIndex]
@@ -145,7 +146,7 @@ export default function AnnotatePage() {
           ...currentAnnotation,
           labels: [
             ...(currentAnnotation.labels || []),
-            { text: selectedText, type: labelType, startIndex, endIndex }
+            { text: selectedText, type: labelType, startIndex, endIndex, correctedText }
           ]
         }
         return newAnnotations

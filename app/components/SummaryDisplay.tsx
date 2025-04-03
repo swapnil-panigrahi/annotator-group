@@ -4,13 +4,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface SummaryDisplayProps {
   summary: string;
   pmid?: string;
-  onAddLabel?: (label: string, selectedText: string, startIndex: number, endIndex: number) => void;
+  onAddLabel?: (label: string, selectedText: string, startIndex: number, endIndex: number, correctedText: string) => void;
   onDeleteLabel?: (index: number) => void;
   labels?: Array<{
     text: string;
     type: string;
     startIndex: number;
     endIndex: number;
+    correctedText?: string;
   }>;
 }
 
@@ -19,10 +20,12 @@ interface Label {
   type: string;
   startIndex: number;
   endIndex: number;
+  correctedText?: string;
 }
 
 export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabel, labels = [] }: SummaryDisplayProps) {
   const [selectedText, setSelectedText] = useState("");
+  const [correctedText, setCorrectedText] = useState("");
   const [selectionIndices, setSelectionIndices] = useState<{ start: number; end: number } | null>(null);
   const [highlightedLabel, setHighlightedLabel] = useState<number | null>(null);
 
@@ -83,15 +86,17 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
         const endOffset = getAbsoluteOffset(range.endContainer, range.endOffset);
 
         setSelectedText(text);
-      setSelectionIndices({ start: startOffset, end: endOffset });
+        setCorrectedText(text); // Initialize corrected text with the selected text
+        setSelectionIndices({ start: startOffset, end: endOffset });
       }
     }
   };
 
   const addLabel = (labelType: string) => {
     if (selectedText && selectionIndices) {
-      onAddLabel?.(labelType, selectedText, selectionIndices.start, selectionIndices.end);
+      onAddLabel?.(labelType, selectedText, selectionIndices.start, selectionIndices.end, correctedText);
       setSelectedText("");
+      setCorrectedText("");
       setSelectionIndices(null);
     }
   };
@@ -164,6 +169,19 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
             <div className="mb-2">
               <span className="font-semibold">Selected text:</span> {selectedText}
             </div>
+            <div className="mb-3">
+              <label htmlFor="corrected-text" className="block text-sm font-medium mb-1">
+                Suggested correction:
+              </label>
+              <textarea
+                id="corrected-text"
+                className="w-full p-2 border rounded-md text-sm"
+                rows={2}
+                value={correctedText}
+                onChange={(e) => setCorrectedText(e.target.value)}
+                placeholder="Enter the corrected version of the text..."
+              />
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {labelTypes.map((labelType) => (
                 <button
@@ -204,6 +222,11 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
                   </button>
                 </div>
                 <div className="text-sm break-words w-full">"{label.text}"</div>
+                {label.correctedText && label.correctedText !== label.text && (
+                  <div className="mt-1 text-sm break-words w-full text-green-600 bg-green-50 p-1 rounded">
+                    <span className="font-medium">Correction:</span> "{label.correctedText}"
+                  </div>
+                )}
               </div>
             ))}
             {labels.length === 0 && (

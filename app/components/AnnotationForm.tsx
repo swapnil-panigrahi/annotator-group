@@ -17,6 +17,7 @@ interface AnnotationFormProps {
     type: string
     startIndex: number
     endIndex: number
+    correctedText?: string
   }>
 }
 

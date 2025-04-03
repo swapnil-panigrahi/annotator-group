@@ -12,7 +12,8 @@ const LabelSchema = z.object({
   text: z.string(),
   type: z.string(),
   startIndex: z.number(),
-  endIndex: z.number()
+  endIndex: z.number(),
+  correctedText: z.string().optional()
 })
 
 const AnnotationSchema = z.object({
