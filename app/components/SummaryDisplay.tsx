@@ -178,24 +178,24 @@ export default function SummaryDisplay({ summary, onAddLabel, onDeleteLabel, lab
             {labels.map((label, index) => (
               <div 
                 key={index}
-                className="flex items-center justify-between gap-2 p-2 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                className="flex flex-col p-2 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
                 onMouseEnter={() => setHighlightedLabel(index)}
                 onMouseLeave={() => setHighlightedLabel(null)}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="px-2 py-1 bg-blue-100 rounded text-sm mb-1 truncate">{label.type}</div>
-                  <div className="text-sm truncate">"{label.text}"</div>
+                <div className="flex items-center justify-between w-full mb-1">
+                  <div className="px-2 py-1 bg-blue-100 rounded text-sm overflow-hidden text-ellipsis">{label.type}</div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteLabel?.(index);
+                    }}
+                    className="text-red-500 hover:text-red-700 p-1 ml-1 flex-shrink-0"
+                    title="Delete label"
+                  >
+                    ×
+                  </button>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteLabel?.(index);
-                  }}
-                  className="text-red-500 hover:text-red-700 p-1"
-                  title="Delete label"
-                >
-                  ×
-                </button>
+                <div className="text-sm break-words w-full">"{label.text}"</div>
               </div>
             ))}
             {labels.length === 0 && (
