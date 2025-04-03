@@ -268,6 +268,29 @@ export default function AnnotatePage() {
                 {Math.round((annotatedCount / summaries.length) * 100)}%
               </span>
             </div>
+            <a
+              href="/guidelines.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className="mr-1"
+              >
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+              Guidelines
+            </a>
             {userName && <span className="text-gray-600 text-sm">Welcome, {userName}</span>}
             <Button 
               onClick={handleLogout}
