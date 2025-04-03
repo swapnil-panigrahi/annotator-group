@@ -61,6 +61,7 @@ export async function GET() {
         id: true,
         text: true,
         summary: true,
+        pmid: true,
         level: true,
         model: true,
         userAssignments: {
@@ -82,6 +83,7 @@ export async function GET() {
       id: summary.id,
       text: summary.text,
       summary: summary.summary,
+      pmid: summary.pmid,
       level: summary.level,
       model: summary.model,
       assigned_at: summary.userAssignments[0]?.assignedAt,

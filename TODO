@@ -1,4 +1,4 @@
-1. Separate scroll bars for summary and labels.
+[DONE] 1. Separate scroll bars for summary and labels.
 2. Add stuff like higher is better. 
 3. Grey out the submit button until all annotations are done (or maybe not).
 4. Load existing annotations.

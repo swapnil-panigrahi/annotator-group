@@ -23,6 +23,7 @@ model TextSummary {
   id              String        @id @default(uuid()) @db.Uuid
   text            String
   summary         String
+  pmid            String?       // Optional PMID field
   createdAt       DateTime      @default(now())
   level           Level         @default(PREMED)
   model           Model         @default(GPT35)
