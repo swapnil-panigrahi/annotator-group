@@ -3,6 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SummaryDisplayProps {
   summary: string;
+  pmid?: string;
   onAddLabel?: (label: string, selectedText: string, startIndex: number, endIndex: number) => void;
   onDeleteLabel?: (index: number) => void;
   labels?: Array<{
@@ -20,7 +21,7 @@ interface Label {
   endIndex: number;
 }
 
-export default function SummaryDisplay({ summary, onAddLabel, onDeleteLabel, labels = [] }: SummaryDisplayProps) {
+export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabel, labels = [] }: SummaryDisplayProps) {
   const [selectedText, setSelectedText] = useState("");
   const [selectionIndices, setSelectionIndices] = useState<{ start: number; end: number } | null>(null);
   const [highlightedLabel, setHighlightedLabel] = useState<number | null>(null);
@@ -141,10 +142,17 @@ export default function SummaryDisplay({ summary, onAddLabel, onDeleteLabel, lab
   return (
     <div className="flex gap-4 h-full">
       <div className="flex-1">
-        <h2 className="text-xl font-semibold mb-4">Summary</h2>
-        <ScrollArea className="h-[calc(100%-2rem)]">
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-lg font-semibold">Summary</h2>
+          {pmid && (
+            <div className="text-xs bg-gray-100 px-2 py-1 rounded-md">
+              PMID: <a href={`https://pubmed.ncbi.nlm.nih.gov/${pmid}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{pmid}</a>
+            </div>
+          )}
+        </div>
+        <ScrollArea className="h-[calc(100%-1.5rem)]">
           <div 
-            className="summary-text text-lg leading-relaxed p-4 border rounded-lg bg-white"
+            className="summary-text text-base leading-relaxed p-3 border rounded-lg bg-white"
             onMouseUp={handleSelection}
           >
             {labels.length > 0 ? renderHighlightedText() : summary}
@@ -172,8 +180,8 @@ export default function SummaryDisplay({ summary, onAddLabel, onDeleteLabel, lab
       </div>
 
       <div className="w-64">
-        <h3 className="font-semibold mb-2">Labels:</h3>
-        <ScrollArea className="h-[calc(100%-2rem)]">
+        <h3 className="text-sm font-semibold mb-2">Labels:</h3>
+        <ScrollArea className="h-[calc(100%-1.5rem)]">
           <div className="pr-4 space-y-2">
             {labels.map((label, index) => (
               <div 

@@ -15,6 +15,7 @@ interface Summary {
   id: string
   text: string
   summary: string
+  pmid?: string
   assigned_at: string
   completed: boolean
 }
@@ -249,64 +250,66 @@ export default function AnnotatePage() {
 
   return (
     <div className="flex flex-col h-screen">
-      <header className="bg-gray-100 p-4 sticky top-0 z-10 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Text Annotation Tool</h1>
-        <div className="flex items-center gap-4">
-          {userName && <span className="text-gray-600">Welcome, {userName}</span>}
-          <Button 
-            onClick={handleLogout}
-            disabled={loading}
-          >
-            {loading ? "Logging out..." : "Logout"}
-          </Button>
-        </div>
-      </header>
-      <div className="bg-gray-100 p-4 sticky top-16 z-10">
-        <NavigationBar currentIndex={currentIndex} totalItems={summaries.length} onNavigate={setCurrentIndex} />
-      </div>
-      <div className="bg-gray-100 p-4">
+      <header className="bg-gray-100 py-2 px-4 sticky top-0 z-10">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <span>
-              Progress: {annotatedCount} / {summaries.length} annotated
-            </span>
-            <div className="flex items-center gap-2">
-              <Progress value={(annotatedCount / summaries.length) * 100} className="w-64" />
-              <span className="text-sm text-gray-500">
+            <h1 className="text-xl font-bold">Text Annotation Tool</h1>
+            <div className="ml-6">
+              <NavigationBar currentIndex={currentIndex} totalItems={summaries.length} onNavigate={setCurrentIndex} />
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 mr-4">
+              <span className="text-sm">
+                Progress: {annotatedCount} / {summaries.length}
+              </span>
+              <Progress value={(annotatedCount / summaries.length) * 100} className="w-32 h-2" />
+              <span className="text-xs text-gray-500">
                 {Math.round((annotatedCount / summaries.length) * 100)}%
               </span>
             </div>
+            {userName && <span className="text-gray-600 text-sm">Welcome, {userName}</span>}
+            <Button 
+              onClick={handleLogout}
+              disabled={loading}
+              size="sm"
+            >
+              {loading ? "Logging out..." : "Logout"}
+            </Button>
           </div>
         </div>
-      </div>
+      </header>
       <main className="flex-grow overflow-hidden flex flex-col lg:flex-row">
         <div className="lg:w-1/2 h-full overflow-y-auto p-4 border-r">
           <TextDisplay text={currentSummary.text} />
         </div>
         <div className="lg:w-1/2 h-full overflow-y-auto p-4">
           <SummaryDisplay 
-            summary={currentSummary.summary} 
+            summary={currentSummary.summary}
+            pmid={currentSummary.pmid}
             onAddLabel={handleAddLabel}
             onDeleteLabel={handleDeleteLabel}
             labels={currentAnnotation.labels}
           />
         </div>
       </main>
-      <footer className="bg-gray-100 p-4 sticky bottom-0 z-10">
-        <div className="flex justify-between mb-4">
+      <footer className="bg-gray-100 pt-2 pb-3 px-4 sticky bottom-0 z-10">
+        <div className="flex justify-between mb-2">
           <Button
             onClick={() => setCurrentIndex((prevIndex) => Math.max(prevIndex - 1, 0))}
             disabled={currentIndex === 0}
+            size="sm"
             className="ml-4"
           >
-            <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+            <ChevronLeft className="mr-1 h-3 w-3" /> Previous
           </Button>
           <Button
             onClick={() => setCurrentIndex((prevIndex) => Math.min(prevIndex + 1, summaries.length - 1))}
             disabled={currentIndex === summaries.length - 1}
+            size="sm"
             className="mr-4"
           >
-            Next <ChevronRight className="ml-2 h-4 w-4" />
+            Next <ChevronRight className="ml-1 h-3 w-3" />
           </Button>
         </div>
         <AnnotationForm

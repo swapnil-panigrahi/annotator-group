@@ -117,21 +117,21 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <form onSubmit={handleSubmit} className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {aspects.map((aspect) => (
-          <div key={aspect.name} className="space-y-2">
+          <div key={aspect.name} className="space-y-1">
             <div className="flex items-center justify-between">
-              <Label>{aspect.label}</Label>
+              <Label className="text-sm">{aspect.label}</Label>
               <TooltipProvider>
                 <Tooltip delayDuration={300}>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-5 w-5" type="button">
-                      <InfoCircle className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-4 w-4" type="button">
+                      <InfoCircle className="h-3 w-3" />
                       <span className="sr-only">Info</span>
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-sm whitespace-pre-wrap">
+                  <TooltipContent className="max-w-sm whitespace-pre-wrap text-xs">
                     <p>{aspect.description}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -140,12 +140,12 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
             <RadioGroup
               onValueChange={(value) => handleRatingChange(aspect.stateKey, Number(value))}
               value={ratings[aspect.stateKey].toString()}
-              className="flex justify-start space-x-1 px-1"
+              className="flex justify-start space-x-1"
             >
               {[1, 2, 3, 4, 5].map((rating) => (
                 <div key={rating} className="flex items-center">
-                  <RadioGroupItem value={rating.toString()} id={`${aspect.name}-${rating}`} />
-                  <Label htmlFor={`${aspect.name}-${rating}`} className="ml-1 mr-2">
+                  <RadioGroupItem value={rating.toString()} id={`${aspect.name}-${rating}`} className="h-3 w-3" />
+                  <Label htmlFor={`${aspect.name}-${rating}`} className="ml-1 mr-1 text-xs">
                     {rating}
                   </Label>
                 </div>
@@ -154,7 +154,7 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
           </div>
         ))}
       </div>
-      <Button type="submit" className="w-full">
+      <Button type="submit" className="w-full" size="sm">
         Submit Annotation
       </Button>
     </form>
