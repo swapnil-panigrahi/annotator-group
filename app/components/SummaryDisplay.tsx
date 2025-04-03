@@ -51,43 +51,37 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
     const text = range.toString().trim();
     
     if (text) {
-      // Find the summary-text container by traversing up the DOM
-      let container: Node | null = range.startContainer;
-      let summaryTextElement: HTMLElement | null = null;
-
-      while (container) {
-        if (container instanceof HTMLElement && container.classList.contains('summary-text')) {
-          summaryTextElement = container;
-          break;
+      try {
+        // Get the summary text element
+        const summaryTextElement = document.querySelector('.summary-text');
+        if (!summaryTextElement) return;
+        
+        // Create a temporary range to find text position in the summary
+        const tempRange = document.createRange();
+        tempRange.setStart(summaryTextElement, 0);
+        tempRange.setEnd(range.startContainer, range.startOffset);
+        
+        // Calculate offsets based on summary text directly
+        const startOffset = summary.indexOf(text);
+        if (startOffset === -1) {
+          console.log('Text not found in summary:', text);
+          return;
         }
-        container = container.parentElement;
-      }
-
-      if (summaryTextElement) {
-        // Calculate the absolute offset by counting characters before the selection
-        const getAbsoluteOffset = (node: Node, offset: number): number => {
-          let absoluteOffset = 0;
-          const treeWalker = document.createTreeWalker(
-            summaryTextElement!,
-            NodeFilter.SHOW_TEXT,
-            null
-          );
-
-          let currentNode = treeWalker.nextNode();
-          while (currentNode && currentNode !== node) {
-            absoluteOffset += currentNode.textContent?.length || 0;
-            currentNode = treeWalker.nextNode();
-          }
-
-          return absoluteOffset + offset;
-        };
-
-        const startOffset = getAbsoluteOffset(range.startContainer, range.startOffset);
-        const endOffset = getAbsoluteOffset(range.endContainer, range.endOffset);
-
+        
+        const endOffset = startOffset + text.length;
+        
+        console.log('Selection found:', {
+          text,
+          startOffset,
+          endOffset,
+          textAtOffset: summary.substring(startOffset, endOffset)
+        });
+        
         setSelectedText(text);
         setCorrectedText(text); // Initialize corrected text with the selected text
         setSelectionIndices({ start: startOffset, end: endOffset });
+      } catch (error) {
+        console.error('Error during text selection:', error);
       }
     }
   };
@@ -106,30 +100,70 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
     let lastIndex = 0;
     const textParts = [];
 
-    // Sort labels by start index to ensure proper rendering order
-    const sortedLabels = [...labels].sort((a, b) => a.startIndex - b.startIndex);
+    // Add current selection highlight if available
+    let allHighlights = [...labels];
+    
+    // Add the current selection as a temporary highlight if it exists
+    if (selectionIndices && selectedText) {
+      allHighlights = [
+        ...allHighlights,
+        {
+          text: selectedText,
+          type: 'current-selection',
+          startIndex: selectionIndices.start,
+          endIndex: selectionIndices.end,
+          correctedText: correctedText
+        }
+      ];
+    }
 
-    sortedLabels.forEach((label, index) => {
+    // Sort all highlights by start index to ensure proper rendering order
+    const sortedHighlights = [...allHighlights].sort((a, b) => a.startIndex - b.startIndex);
+    
+    sortedHighlights.forEach((highlight, index) => {
       // Add text before the highlight
-      if (label.startIndex > lastIndex) {
+      if (highlight.startIndex > lastIndex) {
         textParts.push(
           <span key={`text-${index}`}>
-            {summary.slice(lastIndex, label.startIndex)}
+            {summary.slice(lastIndex, highlight.startIndex)}
           </span>
         );
+      }
+
+      // Determine the highlight style based on the type
+      let highlightClass = '';
+      
+      if (highlight.type === 'current-selection') {
+        // Style for currently selected text
+        highlightClass = 'bg-blue-200 border-b-2 border-blue-400';
+      } else {
+        // Style for labeled text
+        highlightClass = `${highlightedLabel === index ? 'bg-yellow-200' : 'bg-yellow-100'} transition-colors duration-200`;
+        
+        // Add different style if there's a correction
+        if (highlight.correctedText && highlight.correctedText !== highlight.text) {
+          highlightClass = `${highlightedLabel === index ? 'bg-green-200' : 'bg-green-100'} border-b-2 border-green-400 transition-colors duration-200`;
+        }
       }
 
       // Add highlighted text
       textParts.push(
         <span
           key={`highlight-${index}`}
-          className={`${highlightedLabel === index ? 'bg-yellow-200' : ''} transition-colors duration-200`}
+          className={highlightClass}
+          title={highlight.correctedText && highlight.correctedText !== highlight.text ? 
+            `Correction: "${highlight.correctedText}"` : undefined}
         >
-          {summary.slice(label.startIndex, label.endIndex)}
+          {summary.slice(highlight.startIndex, highlight.endIndex)}
+          {highlight.correctedText && highlight.correctedText !== highlight.text && (
+            <span className="text-green-600 ml-1 text-xs font-medium inline-block">
+              → "{highlight.correctedText}"
+            </span>
+          )}
         </span>
       );
 
-      lastIndex = label.endIndex;
+      lastIndex = highlight.endIndex;
     });
 
     // Add remaining text
@@ -160,7 +194,7 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
             className="summary-text text-base leading-relaxed p-3 border rounded-lg bg-white"
             onMouseUp={handleSelection}
           >
-            {labels.length > 0 ? renderHighlightedText() : summary}
+            {renderHighlightedText()}
           </div>
         </ScrollArea>
 
