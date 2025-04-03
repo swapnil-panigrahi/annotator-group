@@ -25,8 +25,8 @@ model TextSummary {
   summary         String
   pmid            String?       // Optional PMID field
   createdAt       DateTime      @default(now())
-  level           Level         @default(PREMED)
-  model           Model         @default(GPT35)
+  level           Level?        // Made optional (removed default)
+  model           Model?        // Made optional (removed default)
   annotations     Annotation[]
   userAssignments UserSummary[]
 }
@@ -63,8 +63,11 @@ model Annotation {
   @@unique([userId, textSummaryId])
 }
 
+// Note: NOVICE has been renamed to LAYMAN. 
+// A migration needs to be run to update the database:
+// npx prisma migrate dev --name rename_novice_to_layman
 enum Level {
-  NOVICE
+  LAYMAN    // Previously NOVICE
   PREMED
   RESEARCHER
   EXPERT
