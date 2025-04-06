@@ -61,11 +61,21 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
         tempRange.setStart(summaryTextElement, 0);
         tempRange.setEnd(range.startContainer, range.startOffset);
         
-        // Calculate offsets based on summary text directly
-        const startOffset = summary.indexOf(text);
-        if (startOffset === -1) {
-          console.log('Text not found in summary:', text);
-          return;
+        // Calculate the start offset by counting characters in the temporary range
+        let startOffset = 0;
+        const walker = document.createTreeWalker(
+          tempRange.commonAncestorContainer,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+        
+        let node;
+        while ((node = walker.nextNode())) {
+          if (node === range.startContainer) {
+            startOffset += range.startOffset;
+            break;
+          }
+          startOffset += node.textContent?.length || 0;
         }
         
         const endOffset = startOffset + text.length;
@@ -181,14 +191,6 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
   return (
     <div className="flex gap-4 h-full">
       <div className="flex-1">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-semibold">Summary</h2>
-          {pmid && (
-            <div className="text-xs bg-gray-100 px-2 py-1 rounded-md">
-              PMID: <a href={`https://pubmed.ncbi.nlm.nih.gov/${pmid}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{pmid}</a>
-            </div>
-          )}
-        </div>
         <ScrollArea className="h-[calc(100%-1.5rem)]">
           <div 
             className="summary-text text-base leading-relaxed p-3 border rounded-lg bg-white"
