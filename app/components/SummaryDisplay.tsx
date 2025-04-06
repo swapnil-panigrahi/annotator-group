@@ -28,6 +28,8 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
   const [correctedText, setCorrectedText] = useState("");
   const [selectionIndices, setSelectionIndices] = useState<{ start: number; end: number } | null>(null);
   const [highlightedLabel, setHighlightedLabel] = useState<number | null>(null);
+  // Store original text separately
+  const originalText = summary;
 
   const labelTypes = [
     "Incorrect definitions",
@@ -39,6 +41,7 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
     "Misinterpretation"
   ];
 
+  // A simple, direct approach to handle selection
   const handleSelection = () => {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) {
@@ -47,52 +50,80 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
       return;
     }
 
-    const range = selection.getRangeAt(0);
-    const text = range.toString().trim();
+    const selectedText = selection.toString().trim();
+    if (!selectedText) return;
     
-    if (text) {
-      try {
-        // Get the summary text element
-        const summaryTextElement = document.querySelector('.summary-text');
-        if (!summaryTextElement) return;
-        
-        // Create a temporary range to find text position in the summary
-        const tempRange = document.createRange();
-        tempRange.setStart(summaryTextElement, 0);
-        tempRange.setEnd(range.startContainer, range.startOffset);
-        
-        // Calculate the start offset by counting characters in the temporary range
-        let startOffset = 0;
-        const walker = document.createTreeWalker(
-          tempRange.commonAncestorContainer,
-          NodeFilter.SHOW_TEXT,
-          null
-        );
-        
-        let node;
-        while ((node = walker.nextNode())) {
-          if (node === range.startContainer) {
-            startOffset += range.startOffset;
-            break;
-          }
-          startOffset += node.textContent?.length || 0;
+    try {
+      // Get the element that contains the selection
+      const range = selection.getRangeAt(0);
+      const node = range.startContainer;
+      
+      // Try to find the closest span element that has data attributes
+      let current: Node | null = node;
+      let startSpan: HTMLElement | null = null;
+      
+      // Walk up the DOM to find a span with data attributes
+      while (current && current !== document.body) {
+        if (current.nodeType === Node.ELEMENT_NODE && 
+            (current as HTMLElement).tagName === 'SPAN' && 
+            (current as HTMLElement).dataset.originalStart) {
+          startSpan = current as HTMLElement;
+          break;
         }
-        
-        const endOffset = startOffset + text.length;
-        
-        console.log('Selection found:', {
-          text,
-          startOffset,
-          endOffset,
-          textAtOffset: summary.substring(startOffset, endOffset)
-        });
-        
-        setSelectedText(text);
-        setCorrectedText(text); // Initialize corrected text with the selected text
-        setSelectionIndices({ start: startOffset, end: endOffset });
-      } catch (error) {
-        console.error('Error during text selection:', error);
+        current = current.parentNode;
       }
+      
+      if (!startSpan) {
+        console.log('Could not find a span with data attributes');
+        return;
+      }
+      
+      // Get the original text offsets from the data attributes
+      const originalStart = parseInt(startSpan.dataset.originalStart || '0', 10);
+      
+      // Calculate the offset within the span
+      let offsetInSpan = 0;
+      
+      // If the selection starts in a text node, calculate its offset
+      if (node.nodeType === Node.TEXT_NODE) {
+        // Find the offset within this text node
+        offsetInSpan = range.startOffset;
+        
+        // If the node isn't the first child, add lengths of previous text nodes
+        let prevNode = node.previousSibling;
+        while (prevNode) {
+          if (prevNode.nodeType === Node.TEXT_NODE) {
+            offsetInSpan += prevNode.textContent?.length || 0;
+          }
+          prevNode = prevNode.previousSibling;
+        }
+      }
+      
+      // Calculate the final position in the original text
+      const originalStartIndex = originalStart + offsetInSpan;
+      const originalEndIndex = originalStartIndex + selectedText.length;
+      
+      // Verify we've got the right text by comparing with the original
+      const textFromOriginal = originalText.substring(originalStartIndex, originalEndIndex);
+      
+      console.log('Selection details:', {
+        selectedText,
+        originalStartIndex,
+        originalEndIndex,
+        textFromOriginal,
+        match: textFromOriginal === selectedText
+      });
+      
+      // Set the state with our selection info
+      setSelectedText(selectedText);
+      setCorrectedText(selectedText);
+      setSelectionIndices({
+        start: originalStartIndex,
+        end: originalEndIndex
+      });
+      
+    } catch (error) {
+      console.error('Error during text selection:', error);
     }
   };
 
@@ -105,87 +136,132 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
     }
   };
 
-  // Function to render text with highlighted sections
+  // Improved rendering function that uses data attributes to store original positions
   const renderHighlightedText = () => {
-    let lastIndex = 0;
-    const textParts = [];
-
-    // Add current selection highlight if available
-    let allHighlights = [...labels];
+    // Build a map of highlights indexed by position
+    const highlightMap = new Map<number, Array<{
+      type: string;
+      text: string;
+      endIndex: number;
+      correctedText?: string;
+    }>>();
     
-    // Add the current selection as a temporary highlight if it exists
+    // Process all labels plus current selection
+    const allHighlights = [...labels];
+    
+    // Add current selection if it exists
     if (selectionIndices && selectedText) {
-      allHighlights = [
-        ...allHighlights,
-        {
-          text: selectedText,
-          type: 'current-selection',
-          startIndex: selectionIndices.start,
-          endIndex: selectionIndices.end,
-          correctedText: correctedText
-        }
-      ];
+      allHighlights.push({
+        text: selectedText,
+        type: 'current-selection',
+        startIndex: selectionIndices.start,
+        endIndex: selectionIndices.end,
+        correctedText
+      });
     }
-
-    // Sort all highlights by start index to ensure proper rendering order
-    const sortedHighlights = [...allHighlights].sort((a, b) => a.startIndex - b.startIndex);
     
-    sortedHighlights.forEach((highlight, index) => {
-      // Add text before the highlight
-      if (highlight.startIndex > lastIndex) {
-        textParts.push(
-          <span key={`text-${index}`}>
-            {summary.slice(lastIndex, highlight.startIndex)}
+    // Group highlights by start index
+    allHighlights.forEach((highlight, index) => {
+      if (!highlightMap.has(highlight.startIndex)) {
+        highlightMap.set(highlight.startIndex, []);
+      }
+      highlightMap.get(highlight.startIndex)?.push({
+        type: highlight.type,
+        text: highlight.text,
+        endIndex: highlight.endIndex,
+        correctedText: highlight.correctedText
+      });
+    });
+    
+    // Sort start positions
+    const startPositions = Array.from(highlightMap.keys()).sort((a, b) => a - b);
+    
+    // Build segments for rendering
+    const segments: JSX.Element[] = [];
+    let lastIndex = 0;
+    
+    // Create each text segment
+    for (let i = 0; i < startPositions.length; i++) {
+      const position = startPositions[i];
+      const highlights = highlightMap.get(position) || [];
+      
+      // Add text before this highlight if any
+      if (position > lastIndex) {
+        segments.push(
+          <span
+            key={`text-${i}`}
+            data-original-start={lastIndex}
+            data-original-end={position}
+          >
+            {originalText.substring(lastIndex, position)}
           </span>
         );
       }
-
-      // Determine the highlight style based on the type
-      let highlightClass = '';
       
-      if (highlight.type === 'current-selection') {
-        // Style for currently selected text
-        highlightClass = 'bg-blue-200 border-b-2 border-blue-400';
-      } else {
-        // Style for labeled text
-        highlightClass = `${highlightedLabel === index ? 'bg-yellow-200' : 'bg-yellow-100'} transition-colors duration-200`;
+      // Process all highlights at this position
+      for (let j = 0; j < highlights.length; j++) {
+        const highlight = highlights[j];
+        const highlightIndex = labels.findIndex(l => 
+          l.startIndex === position && 
+          l.endIndex === highlight.endIndex &&
+          l.type === highlight.type
+        );
         
-        // Add different style if there's a correction
-        if (highlight.correctedText && highlight.correctedText !== highlight.text) {
-          highlightClass = `${highlightedLabel === index ? 'bg-green-200' : 'bg-green-100'} border-b-2 border-green-400 transition-colors duration-200`;
+        // Determine highlight style
+        let highlightClass = '';
+        if (highlight.type === 'current-selection') {
+          highlightClass = 'bg-blue-200 border-b-2 border-blue-400';
+        } else {
+          highlightClass = `${highlightedLabel === highlightIndex ? 'bg-yellow-200' : 'bg-yellow-100'} transition-colors duration-200`;
+          
+          if (highlight.correctedText && highlight.correctedText !== highlight.text) {
+            highlightClass = `${highlightedLabel === highlightIndex ? 'bg-green-200' : 'bg-green-100'} border-b-2 border-green-400 transition-colors duration-200`;
+          }
         }
-      }
-
-      // Add highlighted text
-      textParts.push(
-        <span
-          key={`highlight-${index}`}
-          className={highlightClass}
-          title={highlight.correctedText && highlight.correctedText !== highlight.text ? 
-            `Correction: "${highlight.correctedText}"` : undefined}
-        >
-          {summary.slice(highlight.startIndex, highlight.endIndex)}
-          {highlight.correctedText && highlight.correctedText !== highlight.text && (
-            <span className="text-green-600 ml-1 text-xs font-medium inline-block">
-              → "{highlight.correctedText}"
+        
+        segments.push(
+          <React.Fragment key={`highlight-${i}-${j}`}>
+            <span
+              className={highlightClass}
+              data-original-start={position}
+              data-original-end={highlight.endIndex}
+              data-highlight-index={highlightIndex}
+              data-highlight-type={highlight.type}
+              title={highlight.correctedText && highlight.correctedText !== highlight.text ? 
+                `Correction: "${highlight.correctedText}"` : undefined}
+              onMouseEnter={() => highlightIndex >= 0 && setHighlightedLabel(highlightIndex)}
+              onMouseLeave={() => setHighlightedLabel(null)}
+            >
+              {originalText.substring(position, highlight.endIndex)}
             </span>
-          )}
-        </span>
-      );
-
-      lastIndex = highlight.endIndex;
-    });
-
+            
+            {highlight.correctedText && highlight.correctedText !== highlight.text && (
+              <span className="text-green-600 ml-1 text-xs font-medium inline-block correction-marker">
+                → "{highlight.correctedText}"
+              </span>
+            )}
+          </React.Fragment>
+        );
+        
+        // Update lastIndex if this highlight extends furthest
+        lastIndex = Math.max(lastIndex, highlight.endIndex);
+      }
+    }
+    
     // Add remaining text
-    if (lastIndex < summary.length) {
-      textParts.push(
-        <span key="text-end">
-          {summary.slice(lastIndex)}
+    if (lastIndex < originalText.length) {
+      segments.push(
+        <span
+          key="text-end"
+          data-original-start={lastIndex}
+          data-original-end={originalText.length}
+        >
+          {originalText.substring(lastIndex)}
         </span>
       );
     }
-
-    return textParts;
+    
+    return segments;
   };
 
   return (
