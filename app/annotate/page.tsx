@@ -521,20 +521,20 @@ export default function AnnotatePage() {
   return (
     <div className="flex flex-col h-screen">
       <header className="bg-gray-100 py-2 px-4 sticky top-0 z-10">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">Text Annotation Tool</h1>
-            <div className="ml-6">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 flex-grow">
+            <h1 className="text-lg font-bold whitespace-nowrap flex-shrink-0">Text Annotation Tool</h1>
+            <div className="flex-grow max-w-[calc(100%-350px)]">
               <NavigationBar currentIndex={currentIndex} totalItems={summaries.length} onNavigate={setCurrentIndex} />
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 mr-4">
-              <span className="text-sm">
+          <div className="flex items-center gap-3 justify-end flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm whitespace-nowrap">
                 Progress: {annotatedCount} / {summaries.length}
               </span>
-              <Progress value={(annotatedCount / summaries.length) * 100} className="w-32 h-2" />
-              <span className="text-xs text-gray-500">
+              <Progress value={(annotatedCount / summaries.length) * 100} className="w-20 sm:w-32 h-2" />
+              <span className="text-xs text-gray-500 whitespace-nowrap">
                 {Math.round((annotatedCount / summaries.length) * 100)}%
               </span>
             </div>
@@ -542,7 +542,7 @@ export default function AnnotatePage() {
               href="/guidelines.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center"
+              className="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center whitespace-nowrap"
             >
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
@@ -561,7 +561,7 @@ export default function AnnotatePage() {
               </svg>
               Guidelines
             </a>
-            {userName && <span className="text-gray-600 text-sm">Welcome, {userName}</span>}
+            {userName && <span className="text-gray-600 text-sm whitespace-nowrap">Welcome, {userName}</span>}
             <Button 
               onClick={handleLogout}
               disabled={loading}

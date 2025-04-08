@@ -38,7 +38,8 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
     "Contradiction",
     "Omission",
     "Jumping to conclusions",
-    "Misinterpretation"
+    "Misinterpretation",
+    "Structural Error",
   ];
 
   // A simple, direct approach to handle selection
