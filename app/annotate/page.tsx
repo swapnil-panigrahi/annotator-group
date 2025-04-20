@@ -231,6 +231,18 @@ export default function AnnotatePage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip navigation if target is an input, button, or inside our rating form
+      const target = e.target as HTMLElement;
+      
+      // Check if the click is inside a form element or our custom rating buttons
+      if (target.tagName === 'INPUT' || 
+          target.tagName === 'BUTTON' || 
+          target.tagName === 'TEXTAREA' || 
+          target.tagName === 'SELECT' ||
+          target.closest('form')) {
+        return;
+      }
+      
       if (e.key === "ArrowLeft") {
         setCurrentIndex((prevIndex) => Math.max(prevIndex - 1, 0))
       } else if (e.key === "ArrowRight") {

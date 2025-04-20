@@ -142,6 +142,24 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
     }
   }
 
+  // Add handler to stop propagation of arrow key events
+  const handleRadioKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.stopPropagation();
+    }
+  }, []);
+
+  // Use a custom click handler instead of onValueChange to avoid arrow key navigation
+  const handleRatingClick = useCallback(
+    (aspect: keyof Annotation, rating: number) => {
+      userChangedRating.current = true
+      setRatings((prev) => {
+        return { ...prev, [aspect]: rating }
+      })
+    },
+    [],
+  )
+
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -163,20 +181,23 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <RadioGroup
-              onValueChange={(value) => handleRatingChange(aspect.stateKey, Number(value))}
-              value={ratings[aspect.stateKey].toString()}
-              className="flex justify-start space-x-1"
-            >
+            <div className="flex justify-start space-x-1">
               {[1, 2, 3, 4, 5].map((rating) => (
                 <div key={rating} className="flex items-center">
-                  <RadioGroupItem value={rating.toString()} id={`${aspect.name}-${rating}`} className="h-3 w-3" />
-                  <Label htmlFor={`${aspect.name}-${rating}`} className="ml-1 mr-1 text-xs">
-                    {rating}
-                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => handleRatingClick(aspect.stateKey, rating)}
+                    className={`h-3 w-3 rounded-full ${
+                      ratings[aspect.stateKey] === rating 
+                        ? 'bg-primary border border-primary' 
+                        : 'border border-primary'
+                    }`}
+                    aria-checked={ratings[aspect.stateKey] === rating}
+                  />
+                  <Label className="ml-1 mr-1 text-xs">{rating}</Label>
                 </div>
               ))}
-            </RadioGroup>
+            </div>
           </div>
         ))}
       </div>

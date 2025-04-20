@@ -270,6 +270,7 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
     <div className="flex gap-4 h-full">
       <div className="flex-1">
         <ScrollArea className="h-[calc(100%-1.5rem)]">
+        <h2 className="text-lg font-semibold mb-2">Summary</h2>
           <div 
             className="summary-text text-base leading-relaxed p-3 border rounded-lg bg-white"
             onMouseUp={handleSelection}
