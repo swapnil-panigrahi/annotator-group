@@ -154,8 +154,18 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
     (aspect: keyof Annotation, rating: number) => {
       userChangedRating.current = true
       setRatings((prev) => {
-        return { ...prev, [aspect]: rating }
+        // Toggle rating if clicking the same value again
+        const newRating = prev[aspect] === rating ? 0 : rating;
+        return { ...prev, [aspect]: newRating }
       })
+      
+      // Blur focus from the active element after selecting a rating
+      // This allows arrow keys to navigate between summaries again
+      setTimeout(() => {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      }, 10);
     },
     [],
   )
