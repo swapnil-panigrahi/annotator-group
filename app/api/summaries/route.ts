@@ -73,7 +73,10 @@ export async function GET() {
             completed: true
           }
         }
-      }
+      },
+	  orderBy: {
+		  createdAt: 'asc'
+	  }
     })
 
     console.log(`Found ${summaries.length} summaries for user`)
