@@ -23,51 +23,47 @@ model TextSummary {
   id              String        @id @default(uuid()) @db.Uuid
   text            String
   summary         String
-  pmid            String?       // Optional PMID field
   createdAt       DateTime      @default(now())
-  level           Level?        // Made optional (removed default)
-  model           Model?        // Made optional (removed default)
+  level           Level?
+  model           Model?
+  pmid            String?
   annotations     Annotation[]
   userAssignments UserSummary[]
 }
 
 model UserSummary {
-  id          String      @id @default(uuid()) @db.Uuid
-  userId      String      @db.Uuid
-  summaryId   String      @db.Uuid
-  assignedAt  DateTime    @default(now())
-  completed   Boolean     @default(false)
-  annotationId String?    @db.Uuid
-  textSummary TextSummary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  annotation  Annotation? @relation(fields: [annotationId], references: [id])
+  id           String      @id @default(uuid()) @db.Uuid
+  userId       String      @db.Uuid
+  summaryId    String      @db.Uuid
+  assignedAt   DateTime    @default(now())
+  completed    Boolean     @default(false)
+  annotationId String?     @db.Uuid
+  annotation   Annotation? @relation(fields: [annotationId], references: [id])
+  textSummary  TextSummary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, summaryId])
 }
 
 model Annotation {
-  id                String      @id @default(uuid()) @db.Uuid
-  userId            String      @db.Uuid
-  textSummaryId     String      @db.Uuid
-  comprehensiveness Int         @default(1)
-  layness           Int         @default(1)
-  factuality        Int         @default(1)
-  usefulness        Int         @default(1)
-  labels            Json?       @db.JsonB
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  textSummary       TextSummary @relation(fields: [textSummaryId], references: [id], onDelete: Cascade)
-  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String        @id @default(uuid()) @db.Uuid
+  userId            String        @db.Uuid
+  textSummaryId     String        @db.Uuid
+  comprehensiveness Int           @default(1)
+  layness           Int           @default(1)
+  factuality        Int           @default(1)
+  usefulness        Int           @default(1)
+  labels            Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  textSummary       TextSummary   @relation(fields: [textSummaryId], references: [id], onDelete: Cascade)
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   userSummary       UserSummary[]
 
   @@unique([userId, textSummaryId])
 }
 
-// Note: NOVICE has been renamed to LAYMAN. 
-// A migration needs to be run to update the database:
-// npx prisma migrate dev --name rename_novice_to_layman
 enum Level {
-  LAYMAN    // Previously NOVICE
+  LAYMAN
   PREMED
   RESEARCHER
   EXPERT

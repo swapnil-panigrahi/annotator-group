@@ -48,49 +48,43 @@ export async function GET() {
 
     console.log("Fetching summaries for user:", session.user.id)
 
-    // Fetch user's assigned summaries with Prisma
-    const summaries = await prisma.textSummary.findMany({
+    // Fetch user's assigned summaries starting from UserSummary table
+    const userSummaries = await prisma.userSummary.findMany({
       where: {
-        userAssignments: {
-          some: {
-            userId: session.user.id
-          }
-        }
+        userId: session.user.id
       },
       select: {
         id: true,
-        text: true,
-        summary: true,
-        pmid: true,
-        level: true,
-        model: true,
-        userAssignments: {
-          where: {
-            userId: session.user.id
-          },
+        assignedAt: true,
+        completed: true,
+        textSummary: {
           select: {
-            assignedAt: true,
-            completed: true
+            id: true,
+            text: true,
+            summary: true,
+            pmid: true,
+            level: true,
+            model: true,
           }
         }
       },
-	  orderBy: {
-		  createdAt: 'asc'
-	  }
+      orderBy: {
+        assignedAt: 'asc'
+      }
     })
 
-    console.log(`Found ${summaries.length} summaries for user`)
+    console.log(`Found ${userSummaries.length} summaries for user`)
 
     // Transform the data to match the expected format
-    const formattedSummaries = summaries.map(summary => ({
-      id: summary.id,
-      text: summary.text,
-      summary: summary.summary,
-      pmid: summary.pmid,
-      level: summary.level,
-      model: summary.model,
-      assigned_at: summary.userAssignments[0]?.assignedAt,
-      completed: summary.userAssignments[0]?.completed
+    const formattedSummaries = userSummaries.map(userSummary => ({
+      id: userSummary.textSummary.id,
+      text: userSummary.textSummary.text,
+      summary: userSummary.textSummary.summary,
+      pmid: userSummary.textSummary.pmid,
+      level: userSummary.textSummary.level,
+      model: userSummary.textSummary.model,
+      assigned_at: userSummary.assignedAt,
+      completed: userSummary.completed
     }))
 
     return NextResponse.json({ summaries: formattedSummaries })
@@ -101,4 +95,4 @@ export async function GET() {
       { status: 500 }
     )
   }
-} 
+}
