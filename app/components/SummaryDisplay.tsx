@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface SummaryDisplayProps {
   summary: string;
   pmid?: string;
+  level?: string;
   onAddLabel?: (label: string, selectedText: string, startIndex: number, endIndex: number, correctedText: string) => void;
   onDeleteLabel?: (index: number) => void;
   labels?: Array<{
@@ -23,7 +24,7 @@ interface Label {
   correctedText?: string;
 }
 
-export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabel, labels = [] }: SummaryDisplayProps) {
+export default function SummaryDisplay({ summary, pmid, level, onAddLabel, onDeleteLabel, labels = [] }: SummaryDisplayProps) {
   const [selectedText, setSelectedText] = useState("");
   const [correctedText, setCorrectedText] = useState("");
   const [selectionIndices, setSelectionIndices] = useState<{ start: number; end: number } | null>(null);
@@ -40,7 +41,9 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
     "Jumping to conclusions",
     "Misinterpretation",
     "Structural Error",
-    "Hallucination"
+    "Hallucination",
+    "Grammatical Error",
+    "Feedback"
   ];
 
   // A simple, direct approach to handle selection
@@ -270,7 +273,14 @@ export default function SummaryDisplay({ summary, pmid, onAddLabel, onDeleteLabe
     <div className="flex gap-4 h-full">
       <div className="flex-1">
         <ScrollArea className="h-[calc(100%-1.5rem)]">
-        <h2 className="text-lg font-semibold mb-2">Summary</h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-lg font-semibold">Summary</h2>
+          {level && (
+            <div className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+              Level: {level}
+            </div>
+          )}
+        </div>
           <div 
             className="summary-text text-base leading-relaxed p-3 border rounded-lg bg-white"
             onMouseUp={handleSelection}

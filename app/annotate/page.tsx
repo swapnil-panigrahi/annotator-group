@@ -33,6 +33,7 @@ interface Summary {
   text: string;
   summary: string;
   pmid?: string;
+  level?: string;
   assigned_at: string;
   completed: boolean;
 }
@@ -592,6 +593,7 @@ export default function AnnotatePage() {
           <SummaryDisplay 
             summary={currentSummary.summary}
             pmid={currentSummary.pmid}
+            level={currentSummary.level}
             onAddLabel={handleAddLabel}
             onDeleteLabel={handleDeleteLabel}
             labels={currentAnnotation.labels}
