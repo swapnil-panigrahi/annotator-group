@@ -89,12 +89,10 @@ export async function POST(request: Request) {
       })
 
       // Update the user-summary assignment
-      await tx.userSummary.update({
+      await tx.userSummary.updateMany({
         where: {
-          userId_summaryId: {
-            userId: session.user.id,
-            summaryId: validatedData.textId
-          }
+          userId: session.user.id,
+          summaryId: validatedData.textId
         },
         data: {
           completed: true,

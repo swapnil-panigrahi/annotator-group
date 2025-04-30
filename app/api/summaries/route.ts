@@ -68,9 +68,10 @@ export async function GET() {
           }
         }
       },
-      orderBy: {
-        assignedAt: 'asc'
-      }
+      orderBy: [
+        { assignedAt: 'asc' },
+        { completed: 'desc' }
+      ]
     })
 
     console.log(`Found ${userSummaries.length} summaries for user`)
