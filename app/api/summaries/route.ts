@@ -70,7 +70,8 @@ export async function GET() {
       },
       orderBy: [
         { assignedAt: 'asc' },
-        { completed: 'desc' }
+        { textSummary: { pmid: 'asc' } } ,
+        { completed: 'desc' },
       ]
     })
 
