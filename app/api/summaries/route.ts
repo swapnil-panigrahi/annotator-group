@@ -69,9 +69,10 @@ export async function GET() {
         }
       },
       orderBy: [
-        { assignedAt: 'asc' },
-        { textSummary: { pmid: 'asc' } } ,
         { completed: 'desc' },
+        { textSummary: { text: 'asc' } } ,
+        { textSummary: { level: 'asc' } },
+        // { assignedAt: 'asc' },
       ]
     })
 
