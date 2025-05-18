@@ -72,7 +72,7 @@ export async function GET() {
         { completed: 'desc' },
         { textSummary: { text: 'asc' } } ,
         { textSummary: { level: 'asc' } },
-        // { assignedAt: 'asc' },
+        { assignedAt: 'asc' },
       ]
     })
 

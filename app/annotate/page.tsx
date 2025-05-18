@@ -594,6 +594,7 @@ export default function AnnotatePage() {
             summary={currentSummary.summary}
             pmid={currentSummary.pmid}
             level={currentSummary.level}
+            assignedAt={currentSummary.assigned_at}
             onAddLabel={handleAddLabel}
             onDeleteLabel={handleDeleteLabel}
             labels={currentAnnotation.labels}
