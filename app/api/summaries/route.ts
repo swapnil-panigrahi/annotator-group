@@ -69,10 +69,8 @@ export async function GET() {
         }
       },
       orderBy: [
-        { completed: 'desc' },
         { textSummary: { text: 'asc' } } ,
         { textSummary: { level: 'asc' } },
-        { assignedAt: 'asc' },
       ]
     })
 
