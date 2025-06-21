@@ -44,7 +44,8 @@ export default function SummaryDisplay({ summary, pmid, level, assignedAt, onAdd
     "Structural Error",
     "Hallucination",
     "Grammatical Error",
-    "Feedback"
+    "Feedback",
+    "Addition"
   ];
 
   // A simple, direct approach to handle selection

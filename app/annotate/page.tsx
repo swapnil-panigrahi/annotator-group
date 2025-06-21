@@ -586,10 +586,10 @@ export default function AnnotatePage() {
         </div>
       </header>
       <main className="flex-grow overflow-hidden flex flex-col lg:flex-row">
-        <div className="lg:w-1/2 h-full overflow-y-auto p-4 border-r">
+        <div className="lg:flex-1 h-full overflow-y-auto p-4 border-r">
           <TextDisplay text={currentSummary.text} />
         </div>
-        <div className="lg:w-1/2 h-full overflow-y-auto p-4">
+        <div className="lg:flex-1 h-full overflow-y-auto p-4">
           <SummaryDisplay 
             summary={currentSummary.summary}
             pmid={currentSummary.pmid}
