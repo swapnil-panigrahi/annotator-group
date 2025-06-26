@@ -50,13 +50,15 @@ export async function GET() {
 
     const oneWeekAgo = new Date()
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+    const twoWeeksAgo = new Date()
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
 
     // Fetch user's assigned summaries starting from UserSummary table
     const userSummaries = await prisma.userSummary.findMany({
       where: {
         userId: session.user.id,
         assignedAt: {
-          gte: oneWeekAgo,
+          gte: twoWeeksAgo,
         },
       },
       select: {
