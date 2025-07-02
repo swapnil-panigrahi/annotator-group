@@ -58,7 +58,7 @@ export async function GET() {
       where: {
         userId: session.user.id,
         assignedAt: {
-          gte: twoWeeksAgo,
+          gte: oneWeekAgo,
         },
       },
       select: {
