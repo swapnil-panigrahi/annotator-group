@@ -14,6 +14,7 @@ model User {
   email              String        @unique
   createdAt          DateTime      @default(now())
   annotations        Annotation[]
+  settings           Settings?
   summaryAssignments UserSummary[]
 
   @@map("profiles")
@@ -41,17 +42,16 @@ model UserSummary {
   annotation   Annotation? @relation(fields: [annotationId], references: [id])
   textSummary  TextSummary @relation(fields: [summaryId], references: [id], onDelete: Cascade)
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
 }
 
 model Annotation {
   id                String        @id @default(uuid()) @db.Uuid
   userId            String        @db.Uuid
   textSummaryId     String        @db.Uuid
-  comprehensiveness Int           @default(1)
-  layness           Int           @default(1)
-  factuality        Int           @default(1)
-  usefulness        Int           @default(1)
+  comprehensiveness Int           @default(0)
+  layness           Int           @default(0)
+  factuality        Int           @default(0)
+  usefulness        Int           @default(0)
   labels            Json?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -60,6 +60,14 @@ model Annotation {
   userSummary       UserSummary[]
 
   @@unique([userId, textSummaryId])
+}
+
+model Settings {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @unique @db.Uuid
+  summaryWindowDays Int     @default(7)
+  isAdmin           Boolean @default(false)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum Level {

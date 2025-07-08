@@ -44,6 +44,12 @@ export async function GET(request: Request) {
     // Parse query parameters
     const url = new URL(request.url)
     const textId = url.searchParams.get('textId')
+    const userIdParam = url.searchParams.get('userId')
+    
+    // Check if current user is admin
+    const settings = await prisma.settings.findUnique({ where: { userId: session.user.id }, select: { isAdmin: true } })
+    const isAdmin = !!settings?.isAdmin
+    const targetUserId = (isAdmin && userIdParam) ? userIdParam : session.user.id
     
     // If textId is provided, return single annotation
     if (textId) {
@@ -52,7 +58,7 @@ export async function GET(request: Request) {
       const annotation = await prisma.annotation.findUnique({
         where: {
           userId_textSummaryId: {
-            userId: session.user.id,
+            userId: targetUserId,
             textSummaryId: textId
           }
         },
@@ -79,7 +85,7 @@ export async function GET(request: Request) {
       
       const annotations = await prisma.annotation.findMany({
         where: {
-          userId: session.user.id
+          userId: targetUserId
         },
         select: {
           textSummaryId: true,
@@ -116,4 +122,4 @@ export async function GET(request: Request) {
       { status: 500 }
     )
   }
-} 
+}

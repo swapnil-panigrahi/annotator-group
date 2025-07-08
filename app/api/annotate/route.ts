@@ -18,10 +18,10 @@ const LabelSchema = z.object({
 
 const AnnotationSchema = z.object({
   textId: z.string(),
-  comprehensiveness: z.number().min(1).max(5),
-  layness: z.number().min(1).max(5),
-  factuality: z.number().min(1).max(5),
-  usefulness: z.number().min(1).max(5),
+  comprehensiveness: z.number().min(0).max(5),
+  layness: z.number().min(0).max(5),
+  factuality: z.number().min(0).max(5),
+  usefulness: z.number().min(0).max(5),
   labels: z.array(LabelSchema).optional()
 })
 

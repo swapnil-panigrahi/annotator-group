@@ -31,6 +31,7 @@ interface AnnotationFormProps {
   onAnnotationChange: (annotation: Annotation) => void
   initialAnnotation: Annotation
   labels?: Label[]
+  readOnly?: boolean // NEW: readOnly prop
 }
 
 interface AspectRating {
@@ -75,7 +76,7 @@ const aspects: AspectRating[] = [
   },
 ]
 
-export default function AnnotationForm({ textId, onAnnotationChange, initialAnnotation, labels }: AnnotationFormProps) {
+export default function AnnotationForm({ textId, onAnnotationChange, initialAnnotation, labels, readOnly = false }: AnnotationFormProps) {
   const [ratings, setRatings] = useState(initialAnnotation)
   const isFirstRender = useRef(true)
   const userChangedRating = useRef(false)
@@ -180,7 +181,7 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
               <TooltipProvider>
                 <Tooltip delayDuration={300}>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-4 w-4" type="button">
+                    <Button variant="ghost" size="icon" className="h-4 w-4" type="button" disabled={readOnly}>
                       <InfoCircle className="h-3 w-3" />
                       <span className="sr-only">Info</span>
                     </Button>
@@ -196,13 +197,14 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
                 <div key={rating} className="flex items-center">
                   <button
                     type="button"
-                    onClick={() => handleRatingClick(aspect.stateKey, rating)}
+                    onClick={() => !readOnly && handleRatingClick(aspect.stateKey, rating)}
                     className={`h-3 w-3 rounded-full ${
                       ratings[aspect.stateKey] === rating 
                         ? 'bg-primary border border-primary' 
                         : 'border border-primary'
-                    }`}
+                    } ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                     aria-checked={ratings[aspect.stateKey] === rating}
+                    disabled={readOnly}
                   />
                   <Label className="ml-1 mr-1 text-xs">{rating}</Label>
                 </div>
@@ -211,9 +213,11 @@ export default function AnnotationForm({ textId, onAnnotationChange, initialAnno
           </div>
         ))}
       </div>
-      <Button type="submit" className="w-full" size="sm">
-        Submit Annotation
-      </Button>
+      {!readOnly && (
+        <Button type="submit" className="w-full" size="sm">
+          Submit Annotation
+        </Button>
+      )}
     </form>
   )
 }

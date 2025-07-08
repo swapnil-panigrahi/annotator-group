@@ -57,6 +57,11 @@ export default function AnnotatePage() {
     labels: []
   })
 
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [allUsers, setAllUsers] = useState<{ id: string, name: string }[]>([])
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [adminMode, setAdminMode] = useState(false)
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -414,30 +419,128 @@ export default function AnnotatePage() {
     }
   }
 
+  // Fetch user profile and admin status from settings
   useEffect(() => {
-    const fetchUserProfile = async () => {
+    const fetchUserProfileAndAdmin = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser()
+        console.log('Fetched user:', user)
         if (user) {
+          // Fetch user name from profiles
           const { data: profile } = await supabase
             .from('profiles')
             .select('name')
             .eq('id', user.id)
             .single()
-          
           if (profile) {
             setUserName(profile.name)
           }
+          // Fetch isAdmin from settings
+          const { data: settings, error: settingsError } = await supabase
+            .from('Settings')
+            .select('isAdmin')
+            .eq('userId', user.id)
+            .single()
+          console.log('Fetched settings:', settings, 'error:', settingsError)
+          if (settings?.isAdmin) {
+            setAdminMode(true)
+            console.log('Admin mode enabled')
+          } else {
+            setAdminMode(false)
+            console.log('Admin mode disabled')
+          }
         }
       } catch (error) {
-        console.error('Error fetching user profile:', error)
+        console.error('Error fetching user profile or admin status:', error)
       }
     }
-
-    fetchUserProfile()
+    fetchUserProfileAndAdmin()
   }, [])
 
-  // Update this function to use our cached annotations data
+  // If admin, fetch all users for dropdown
+  useEffect(() => {
+    if (adminMode) {
+      const fetchUsers = async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .order('name', { ascending: true })
+        if (!error && data) {
+          setAllUsers(data)
+        }
+      }
+      fetchUsers()
+    }
+  }, [adminMode])
+
+  // If admin and a user is selected, fetch that user's summaries/annotations
+  useEffect(() => {
+    if (adminMode && selectedUserId) {
+      const fetchUserSummariesAdmin = async () => {
+        setLoading(true)
+        try {
+          const response = await fetch(`/api/summaries?userId=${selectedUserId}`, {
+            credentials: 'include',
+            headers: { 'Cache-Control': 'no-cache' }
+          })
+          const data = await response.json()
+          setSummaries(data.summaries || [])
+        } catch (err) {
+          setError('Failed to fetch user summaries')
+        } finally {
+          setLoading(false)
+        }
+      }
+      fetchUserSummariesAdmin()
+    }
+  }, [adminMode, selectedUserId])
+
+  useEffect(() => {
+    if (adminMode && selectedUserId && summaries.length > 0) {
+      const fetchAnnotationsAdmin = async () => {
+        setLoadingAnnotations(true)
+        try {
+          const response = await fetch(`/api/annotations?userId=${selectedUserId}`, {
+            credentials: 'include',
+            headers: { 'Cache-Control': 'no-cache' }
+          })
+          const data = await response.json()
+          const userAnnotations = data.annotations || {}
+          const initialAnnotations = summaries.map((summary) => {
+            const existingAnnotation = userAnnotations?.[summary.id]
+            if (existingAnnotation) {
+              return {
+                comprehensiveness: existingAnnotation.comprehensiveness || 0,
+                layness: existingAnnotation.layness || 0,
+                factuality: existingAnnotation.factuality || 0,
+                usefulness: existingAnnotation.usefulness || 0,
+                labels: existingAnnotation.labels || []
+              }
+            } else {
+              return {
+                comprehensiveness: 0,
+                layness: 0,
+                factuality: 0,
+                usefulness: 0,
+                labels: []
+              }
+            }
+          })
+          setAnnotations(initialAnnotations)
+          if (initialAnnotations.length > 0) {
+            setCurrentAnnotation(initialAnnotations[0])
+          }
+        } catch (err) {
+          setError('Failed to fetch user annotations')
+        } finally {
+          setLoadingAnnotations(false)
+        }
+      }
+      fetchAnnotationsAdmin()
+    }
+  }, [adminMode, selectedUserId, summaries])
+
+  // Fetch annotation for summary (admin)
   const fetchAnnotationForSummary = useCallback(async (summaryId: string) => {
     // Skip API call entirely since we already have all annotations cached
     // This function is maintained for API compatibility but now just sets loading to false
@@ -525,11 +628,8 @@ export default function AnnotatePage() {
 
   const currentSummary = summaries[currentIndex]
 
-  // Calculate annotated count by checking if all numeric fields are filled
-  const annotatedCount = annotations.filter((a) => {
-    const numericFields = [a.comprehensiveness, a.layness, a.factuality, a.usefulness];
-    return numericFields.every(v => v !== 0);
-  }).length;
+  // Calculate annotated count by checking if an annotation object exists for the summary
+  const annotatedCount = annotations.filter((a) => a !== undefined && a !== null).length;
 
   return (
     <div className="flex flex-col h-screen">
@@ -542,6 +642,9 @@ export default function AnnotatePage() {
             </div>
           </div>
           <div className="flex items-center gap-3 justify-end flex-shrink-0">
+            {adminMode && (
+              <a href="/admin" className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium">Admin Panel</a>
+            )}
             <div className="flex items-center gap-2">
               <span className="text-sm whitespace-nowrap">
                 Progress: {annotatedCount} / {summaries.length}
@@ -595,8 +698,8 @@ export default function AnnotatePage() {
             pmid={currentSummary.pmid}
             level={currentSummary.level}
             assignedAt={currentSummary.assigned_at}
-            onAddLabel={handleAddLabel}
-            onDeleteLabel={handleDeleteLabel}
+            onAddLabel={adminMode ? undefined : handleAddLabel}
+            onDeleteLabel={adminMode ? undefined : handleDeleteLabel}
             labels={currentAnnotation.labels}
           />
         </div>
@@ -628,9 +731,10 @@ export default function AnnotatePage() {
         ) : (
           <AnnotationForm
             textId={currentSummary.id}
-            onAnnotationChange={handleAnnotationChange}
+            onAnnotationChange={adminMode ? () => {} : handleAnnotationChange}
             initialAnnotation={currentAnnotation}
             labels={currentAnnotation.labels}
+            readOnly={adminMode}
           />
         )}
       </footer>

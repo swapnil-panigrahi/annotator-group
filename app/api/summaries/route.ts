@@ -6,10 +6,9 @@ import { prisma } from '@/lib/prisma'
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const cookieStore = cookies()
-    
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,38 +26,37 @@ export async function GET() {
         },
       }
     )
-    
     const { data: { session }, error: authError } = await supabase.auth.getSession()
-    
     if (authError) {
-      console.error("Auth error:", authError)
-      return NextResponse.json(
-        { error: "Authentication error" },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "Authentication error" }, { status: 401 })
     }
-
     if (!session?.user?.id) {
-      console.error("No session or user ID")
-      return NextResponse.json(
-        { error: "No active session" },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: "No active session" }, { status: 401 })
     }
 
-    console.log("Fetching summaries for user:", session.user.id)
+    // Parse userId param
+    const url = new URL(request.url)
+    const userIdParam = url.searchParams.get('userId')
 
-    const oneWeekAgo = new Date()
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-    const twoWeeksAgo = new Date()
-    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14)
+    // Check if current user is admin
+    const settings = await prisma.settings.findUnique({ where: { userId: session.user.id }, select: { isAdmin: true, summaryWindowDays: true } })
+    const isAdmin = !!settings?.isAdmin
+    console.log("settings:", settings)
+    const summaryWindowDays = settings?.summaryWindowDays ?? 7
+    const windowStart = new Date()
+    windowStart.setDate(windowStart.getDate() - summaryWindowDays)
+
+    // Use userId param if admin, else session user
+    const targetUserId = (isAdmin && userIdParam) ? userIdParam : session.user.id
+
+    console.log("Fetching summaries for user:", targetUserId)
 
     // Fetch user's assigned summaries starting from UserSummary table
     const userSummaries = await prisma.userSummary.findMany({
       where: {
-        userId: session.user.id,
+        userId: targetUserId,
         assignedAt: {
-          gte: oneWeekAgo,
+          gte: windowStart,
         },
       },
       select: {
