@@ -62,6 +62,12 @@ export default function AnnotatePage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [adminMode, setAdminMode] = useState(false)
 
+  const [adminViewSummaries, setAdminViewSummaries] = useState<Summary[]>([])
+  const [adminViewAnnotations, setAdminViewAnnotations] = useState<Record<string, Annotation>>({})
+  const [adminViewCurrentIndex, setAdminViewCurrentIndex] = useState(0)
+  const [adminViewCurrentAnnotation, setAdminViewCurrentAnnotation] = useState<Annotation | null>(null)
+  const [adminViewLoading, setAdminViewLoading] = useState(false)
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -478,6 +484,7 @@ export default function AnnotatePage() {
     if (adminMode && selectedUserId) {
       const fetchUserSummariesAdmin = async () => {
         setLoading(true)
+        setAdminViewLoading(true)
         try {
           const response = await fetch(`/api/summaries?userId=${selectedUserId}`, {
             credentials: 'include',
@@ -485,10 +492,14 @@ export default function AnnotatePage() {
           })
           const data = await response.json()
           setSummaries(data.summaries || [])
+          setAdminViewSummaries(data.summaries || [])
+          setAdminViewCurrentIndex(0)
         } catch (err) {
           setError('Failed to fetch user summaries')
+          setAdminViewSummaries([])
         } finally {
           setLoading(false)
+          setAdminViewLoading(false)
         }
       }
       fetchUserSummariesAdmin()
@@ -496,9 +507,10 @@ export default function AnnotatePage() {
   }, [adminMode, selectedUserId])
 
   useEffect(() => {
-    if (adminMode && selectedUserId && summaries.length > 0) {
+    if (adminMode && selectedUserId && adminViewSummaries.length > 0) {
       const fetchAnnotationsAdmin = async () => {
         setLoadingAnnotations(true)
+        setAdminViewLoading(true)
         try {
           const response = await fetch(`/api/annotations?userId=${selectedUserId}`, {
             credentials: 'include',
@@ -506,46 +518,38 @@ export default function AnnotatePage() {
           })
           const data = await response.json()
           const userAnnotations = data.annotations || {}
-          const initialAnnotations = summaries.map((summary) => {
-            const existingAnnotation = userAnnotations?.[summary.id]
-            if (existingAnnotation) {
-              return {
-                comprehensiveness: existingAnnotation.comprehensiveness || 0,
-                layness: existingAnnotation.layness || 0,
-                factuality: existingAnnotation.factuality || 0,
-                usefulness: existingAnnotation.usefulness || 0,
-                labels: existingAnnotation.labels || []
-              }
-            } else {
-              return {
-                comprehensiveness: 0,
-                layness: 0,
-                factuality: 0,
-                usefulness: 0,
-                labels: []
-              }
-            }
-          })
-          setAnnotations(initialAnnotations)
-          if (initialAnnotations.length > 0) {
-            setCurrentAnnotation(initialAnnotations[0])
+          setAdminViewAnnotations(userAnnotations)
+          // Set the current annotation for the first summary
+          const firstSummary = adminViewSummaries[0]
+          if (firstSummary) {
+            setAdminViewCurrentAnnotation(userAnnotations[firstSummary.id] || null)
+          } else {
+            setAdminViewCurrentAnnotation(null)
           }
         } catch (err) {
           setError('Failed to fetch user annotations')
+          setAdminViewAnnotations({})
+          setAdminViewCurrentAnnotation(null)
         } finally {
           setLoadingAnnotations(false)
+          setAdminViewLoading(false)
         }
       }
       fetchAnnotationsAdmin()
     }
-  }, [adminMode, selectedUserId, summaries])
+  }, [adminMode, selectedUserId, adminViewSummaries])
 
-  // Fetch annotation for summary (admin)
-  const fetchAnnotationForSummary = useCallback(async (summaryId: string) => {
-    // Skip API call entirely since we already have all annotations cached
-    // This function is maintained for API compatibility but now just sets loading to false
-    setLoadingAnnotations(false);
-  }, []);
+  // Update adminViewCurrentAnnotation when adminViewCurrentIndex changes
+  useEffect(() => {
+    if (adminMode && adminViewSummaries.length > 0 && adminViewAnnotations) {
+      const summary = adminViewSummaries[adminViewCurrentIndex]
+      if (summary) {
+        setAdminViewCurrentAnnotation(adminViewAnnotations[summary.id] || null)
+      } else {
+        setAdminViewCurrentAnnotation(null)
+      }
+    }
+  }, [adminMode, adminViewCurrentIndex, adminViewSummaries, adminViewAnnotations])
 
   // Modified to better handle already loaded annotations
   useEffect(() => {
@@ -601,15 +605,17 @@ export default function AnnotatePage() {
     }
   }, [currentIndex, annotations, summaries.length]);
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>
-  }
+  // Only show one view: admin OR user
+  const showAdminView = adminMode && selectedUserId;
 
-  if (error) {
-    return <div className="flex items-center justify-center h-screen text-red-500">{error}</div>
-  }
+  // Fix: define annotatedCount before return
+  const annotatedCount = annotations.filter((a) => a !== undefined && a !== null).length;
 
-  if (summaries.length === 0) {
+  // Fix: define currentSummary before return
+  const currentSummary = summaries[currentIndex];
+
+  // Guard: if not admin view and currentSummary is undefined, show fallback
+  if (!showAdminView && !currentSummary) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -626,11 +632,6 @@ export default function AnnotatePage() {
     )
   }
 
-  const currentSummary = summaries[currentIndex]
-
-  // Calculate annotated count by checking if an annotation object exists for the summary
-  const annotatedCount = annotations.filter((a) => a !== undefined && a !== null).length;
-
   return (
     <div className="flex flex-col h-screen">
       <header className="bg-gray-100 py-2 px-4 sticky top-0 z-10">
@@ -638,12 +639,32 @@ export default function AnnotatePage() {
           <div className="flex items-center gap-3 flex-grow">
             <h1 className="text-lg font-bold whitespace-nowrap flex-shrink-0">Text Annotation Tool</h1>
             <div className="flex-grow max-w-[calc(100%-350px)]">
-              <NavigationBar currentIndex={currentIndex} totalItems={summaries.length} onNavigate={setCurrentIndex} />
+              <NavigationBar
+                currentIndex={showAdminView ? adminViewCurrentIndex : currentIndex}
+                totalItems={showAdminView ? adminViewSummaries.length : summaries.length}
+                onNavigate={showAdminView ? setAdminViewCurrentIndex : setCurrentIndex}
+              />
             </div>
           </div>
           <div className="flex items-center gap-3 justify-end flex-shrink-0">
             {adminMode && (
-              <a href="/admin" className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium">Admin Panel</a>
+              <>
+                <a href="/admin" className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium">Admin Panel</a>
+                <div className="ml-4">
+                  <label htmlFor="admin-user-select" className="mr-2 text-sm">View as user:</label>
+                  <select
+                    id="admin-user-select"
+                    className="border rounded px-2 py-1 text-sm"
+                    value={selectedUserId || ''}
+                    onChange={e => setSelectedUserId(e.target.value || null)}
+                  >
+                    <option value="">-- Select user --</option>
+                    {allUsers.map(u => (
+                      <option key={u.id} value={u.id}>{u.name || u.id}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
             )}
             <div className="flex items-center gap-2">
               <span className="text-sm whitespace-nowrap">
@@ -688,56 +709,82 @@ export default function AnnotatePage() {
           </div>
         </div>
       </header>
-      <main className="flex-grow overflow-hidden flex flex-col lg:flex-row">
-        <div className="lg:flex-1 h-full overflow-y-auto p-4 border-r">
-          <TextDisplay text={currentSummary.text} />
-        </div>
-        <div className="lg:flex-1 h-full overflow-y-auto p-4">
-          <SummaryDisplay 
-            summary={currentSummary.summary}
-            pmid={currentSummary.pmid}
-            level={currentSummary.level}
-            assignedAt={currentSummary.assigned_at}
-            onAddLabel={adminMode ? undefined : handleAddLabel}
-            onDeleteLabel={adminMode ? undefined : handleDeleteLabel}
-            labels={currentAnnotation.labels}
-          />
-        </div>
-      </main>
-      <footer className="bg-gray-100 pt-2 pb-3 px-4 sticky bottom-0 z-10">
-        <div className="flex justify-between mb-2">
-          <Button
-            onClick={() => setCurrentIndex((prevIndex) => Math.max(prevIndex - 1, 0))}
-            disabled={currentIndex === 0}
-            size="sm"
-            className="ml-4"
-          >
-            <ChevronLeft className="mr-1 h-3 w-3" /> Previous
-          </Button>
-          <Button
-            onClick={() => setCurrentIndex((prevIndex) => Math.min(prevIndex + 1, summaries.length - 1))}
-            disabled={currentIndex === summaries.length - 1}
-            size="sm"
-            className="mr-4"
-          >
-            Next <ChevronRight className="ml-1 h-3 w-3" />
-          </Button>
-        </div>
-        {loading || loadingAnnotations ? (
-          <div className="flex justify-center items-center py-6">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700"></div>
-            <span className="ml-2 text-sm text-gray-600">Loading annotations...</span>
-          </div>
-        ) : (
-          <AnnotationForm
-            textId={currentSummary.id}
-            onAnnotationChange={adminMode ? () => {} : handleAnnotationChange}
-            initialAnnotation={currentAnnotation}
-            labels={currentAnnotation.labels}
-            readOnly={adminMode}
-          />
-        )}
-      </footer>
+      {showAdminView ? (
+        <>
+          <main className="flex-grow overflow-hidden flex flex-col lg:flex-row bg-yellow-50 border-t border-b border-yellow-200">
+            {adminViewLoading ? (
+              <div className="flex items-center justify-center w-full h-64">Loading user annotations...</div>
+            ) : adminViewSummaries.length === 0 ? (
+              <div className="flex items-center justify-center w-full h-64">No summaries found for this user.</div>
+            ) : (
+              <>
+                <div className="lg:flex-1 h-full overflow-y-auto p-4 border-r">
+                  <TextDisplay text={adminViewSummaries[adminViewCurrentIndex].text} />
+                </div>
+                <div className="lg:flex-1 h-full overflow-y-auto p-4">
+                  <SummaryDisplay
+                    summary={adminViewSummaries[adminViewCurrentIndex].summary}
+                    pmid={adminViewSummaries[adminViewCurrentIndex].pmid}
+                    level={adminViewSummaries[adminViewCurrentIndex].level}
+                    assignedAt={adminViewSummaries[adminViewCurrentIndex].assigned_at}
+                    labels={adminViewCurrentAnnotation?.labels || []}
+                  />
+                </div>
+              </>
+            )}
+          </main>
+          {adminViewSummaries.length > 0 && (
+            <footer className="bg-yellow-50 pt-2 pb-3 px-4 border-t border-yellow-200">
+              {/* NavigationBar and nav buttons removed from admin footer */}
+              {adminViewCurrentAnnotation && (
+                <AnnotationForm
+                  textId={adminViewSummaries[adminViewCurrentIndex].id}
+                  onAnnotationChange={() => {}}
+                  initialAnnotation={adminViewCurrentAnnotation}
+                  labels={adminViewCurrentAnnotation.labels}
+                  readOnly={true}
+                />
+              )}
+            </footer>
+          )}
+        </>
+      ) : (
+        <>
+          <main className="flex-grow overflow-hidden flex flex-col lg:flex-row">
+            <div className="lg:flex-1 h-full overflow-y-auto p-4 border-r">
+              <TextDisplay text={currentSummary.text} />
+            </div>
+            <div className="lg:flex-1 h-full overflow-y-auto p-4">
+              <SummaryDisplay 
+                summary={currentSummary.summary}
+                pmid={currentSummary.pmid}
+                level={currentSummary.level}
+                assignedAt={currentSummary.assigned_at}
+                onAddLabel={adminMode ? undefined : handleAddLabel}
+                onDeleteLabel={adminMode ? undefined : handleDeleteLabel}
+                labels={currentAnnotation.labels}
+              />
+            </div>
+          </main>
+          <footer className="bg-gray-100 pt-2 pb-3 px-4 sticky bottom-0 z-10">
+            {/* NavigationBar and nav buttons removed from user footer */}
+            {loading || loadingAnnotations ? (
+              <div className="flex justify-center items-center py-6">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-700"></div>
+                <span className="ml-2 text-sm text-gray-600">Loading annotations...</span>
+              </div>
+            ) : (
+              <AnnotationForm
+                textId={currentSummary.id}
+                onAnnotationChange={adminMode ? () => {} : handleAnnotationChange}
+                initialAnnotation={currentAnnotation}
+                labels={currentAnnotation.labels}
+                readOnly={adminMode}
+              />
+            )}
+          </footer>
+        </>
+      )}
     </div>
   )
 }

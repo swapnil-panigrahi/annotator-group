@@ -109,35 +109,40 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u: any) => (
-                <tr key={u.id}>
-                  <td className="p-2 border">{u.name}</td>
-                  <td className="p-2 border">{u.email}</td>
-                  <td className="p-2 border">
-                    <input
-                      type="number"
-                      min={1}
-                      max={365}
-                      defaultValue={u.Settings.summaryWindowDays ?? 7}
-                      disabled={updating === u.id}
-                      className="border rounded px-2 py-1 w-24"
-                      id={`window-${u.id}`}
-                    />
-                  </td>
-                  <td className="p-2 border">
-                    <Button
-                      size="sm"
-                      disabled={updating === u.id}
-                      onClick={() => {
-                        const val = (document.getElementById(`window-${u.id}`) as HTMLInputElement)?.value
-                        handleChange(u.id, Number(val))
-                      }}
-                    >
-                      {updating === u.id ? 'Saving...' : 'Save'}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              {
+                users.map((u: any) => {
+                  console.log('u.Settings:', u.Settings); // <-- Add this line
+                  return (
+                    <tr key={u.id}>
+                      <td className="p-2 border">{u.name}</td>
+                      <td className="p-2 border">{u.email}</td>
+                      <td className="p-2 border">
+                        <input
+                          type="number"
+                          min={1}
+                          max={365}
+                          defaultValue={u.Settings[0]?.summaryWindowDays ?? 7}
+                          disabled={updating === u.id}
+                          className="border rounded px-2 py-1 w-24"
+                          id={`window-${u.id}`}
+                        />
+                      </td>
+                      <td className="p-2 border">
+                        <Button
+                          size="sm"
+                          disabled={updating === u.id}
+                          onClick={() => {
+                            const val = (document.getElementById(`window-${u.id}`) as HTMLInputElement)?.value
+                            handleChange(u.id, Number(val))
+                          }}
+                        >
+                          {updating === u.id ? 'Saving...' : 'Save'}
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })
+              }
             </tbody>
           </table>
         ) : (

@@ -51,13 +51,14 @@ export async function GET(request: Request) {
 
     console.log("Fetching summaries for user:", targetUserId)
 
+    // For admins, do not apply summary window
+    const assignedAtFilter = isAdmin && userIdParam ? {} : { gte: windowStart };
+
     // Fetch user's assigned summaries starting from UserSummary table
     const userSummaries = await prisma.userSummary.findMany({
       where: {
         userId: targetUserId,
-        assignedAt: {
-          gte: windowStart,
-        },
+        assignedAt: assignedAtFilter,
       },
       select: {
         id: true,
