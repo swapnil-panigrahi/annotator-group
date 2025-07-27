@@ -9,27 +9,31 @@ datasource db {
 }
 
 model User {
-  id                 String        @id @db.Uuid
+  id                 String           @id @db.Uuid
   name               String
-  email              String        @unique
-  createdAt          DateTime      @default(now())
+  email              String           @unique
+  createdAt          DateTime         @default(now())
   annotations        Annotation[]
   settings           Settings?
   summaryAssignments UserSummary[]
+  rankingTasks       UserRankingTask[]
 
   @@map("profiles")
 }
 
 model TextSummary {
-  id              String        @id @default(uuid()) @db.Uuid
+  id              String           @id @default(uuid()) @db.Uuid
   text            String
   summary         String
-  createdAt       DateTime      @default(now())
+  createdAt       DateTime         @default(now())
   level           Level?
   model           Model?
   pmid            String?
   annotations     Annotation[]
   userAssignments UserSummary[]
+  targetInGroups  RankingGroup[]   @relation("TargetSummary")
+  baselineInGroups RankingGroup[]  @relation("BaselineSummary")
+  ageneticInGroups RankingGroup[]  @relation("AgeneticSummary")
 }
 
 model UserSummary {
@@ -70,6 +74,44 @@ model Settings {
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model RankingGroup {
+  id             String           @id @default(uuid()) @db.Uuid
+  pmid           String
+  abstract       String
+  createdAt      DateTime         @default(now())
+  targetId       String           @db.Uuid
+  baselineId     String           @db.Uuid
+  ageneticId     String           @db.Uuid
+  target         TextSummary      @relation("TargetSummary", fields: [targetId], references: [id], onDelete: Cascade)
+  baseline       TextSummary      @relation("BaselineSummary", fields: [baselineId], references: [id], onDelete: Cascade)
+  agenetic       TextSummary      @relation("AgeneticSummary", fields: [ageneticId], references: [id], onDelete: Cascade)
+  assignments    UserRankingTask[]
+}
+
+model UserRankingTask {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @db.Uuid
+  rankingGroupId String       @db.Uuid
+  assignedAt     DateTime     @default(now())
+  completed      Boolean      @default(false)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rankingGroup   RankingGroup @relation(fields: [rankingGroupId], references: [id], onDelete: Cascade)
+  ranking        SummaryRanking?
+
+  @@unique([userId, rankingGroupId])
+}
+
+model SummaryRanking {
+  id                String         @id @default(uuid()) @db.Uuid
+  userRankingTaskId String         @unique @db.Uuid
+  userRankingTask   UserRankingTask @relation(fields: [userRankingTaskId], references: [id], onDelete: Cascade)
+  targetRank        Int
+  baselineRank      Int
+  ageneticRank      Int
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
 enum Level {
   LAYMAN
   PREMED
@@ -85,4 +127,10 @@ enum Model {
   LLAMA2
   MISTRAL
   GPT4O
+}
+
+enum SummaryType {
+  TARGET
+  BASELINE
+  AGENETIC
 }
