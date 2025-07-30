@@ -414,7 +414,7 @@ export default function RankingPage() {
             <div key={summary.id} className="lg:w-1/3 h-full overflow-y-auto p-4 border-r:last:border-r-0 flex flex-col">
               <label className="mb-2 text-sm font-semibold">Summary</label>
               <textarea
-                className="border rounded-lg p-3 min-h-[200px] flex-1 bg-white"
+                className="border rounded-lg p-3 min-h-[450px] flex-1 bg-white"
                 value={summary.summary}
                 readOnly
               />
