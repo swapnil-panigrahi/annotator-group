@@ -51,7 +51,7 @@ export default function LoginPage() {
       }
 
       console.log('Login successful, redirecting...')
-      router.push('/annotate')
+      router.push('/ranking')
       router.refresh()
     } catch (err) {
       console.error('Login error:', err)

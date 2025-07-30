@@ -31,14 +31,19 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { session }, error } = await supabase.auth.getSession()
+  // --- CHANGE STARTS HERE ---
+  // Use supabase.auth.getUser() instead of getSession() for more secure authentication
+  const { data: { user }, error } = await supabase.auth.getUser(); // Directly get the user object
+  // --- CHANGE ENDS HERE ---
+
   const pathname = request.nextUrl.pathname
 
   // Log authentication attempts
-  console.log(`Auth check for ${pathname}:`, session ? 'Authenticated' : 'Not authenticated')
+  // Check 'user' directly for authentication status
+  console.log(`Auth check for ${pathname}:`, user ? 'Authenticated' : 'Not authenticated')
 
   // Protect routes that require authentication
-  if (pathname.startsWith('/annotate') || pathname.startsWith('/api/')) {
+  if (pathname.startsWith('/ranking') || pathname.startsWith('/api/')) {
     if (error) {
       console.error('Auth error:', error)
       if (pathname.startsWith('/api/')) {
@@ -52,7 +57,8 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    if (!session) {
+    // Check 'user' directly to see if they are logged in
+    if (!user) { // 'session' is replaced by 'user'
       if (pathname.startsWith('/api/')) {
         return NextResponse.json(
           { error: 'Unauthorized' },
@@ -65,9 +71,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Add user ID to headers if session exists
-  if (session?.user) {
-    response.headers.set('x-user-id', session.user.id)
+  // Add user ID to headers if user exists
+  if (user) { // Use 'user' instead of 'session?.user'
+    response.headers.set('x-user-id', user.id)
   }
 
   return response
@@ -75,7 +81,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/annotate/:path*',
+    '/ranking/:path*',
     '/api/:path*'
   ],
-} 
+}

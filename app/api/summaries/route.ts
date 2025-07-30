@@ -54,48 +54,137 @@ export async function GET(request: Request) {
     // For admins, do not apply summary window
     const assignedAtFilter = isAdmin && userIdParam ? {} : { gte: windowStart };
 
-    // Fetch user's assigned summaries starting from UserSummary table
-    const userSummaries = await prisma.userSummary.findMany({
-      where: {
-        userId: targetUserId,
-        assignedAt: assignedAtFilter,
-      },
-      select: {
-        id: true,
-        assignedAt: true,
-        completed: true,
-        textSummary: {
-          select: {
-            id: true,
-            text: true,
-            summary: true,
-            pmid: true,
-            level: true,
-            model: true,
+    try {
+      // Try to fetch from new group tables first
+      console.log("Attempting to fetch from group tables...")
+      
+      const userGroupAssignments = await prisma.userGroup.findMany({
+        where: {
+          userID: targetUserId,
+          assignedAt: assignedAtFilter,
+        },
+        select: {
+          id: true,
+          assignedAt: true,
+          completed: true,
+          abstractID: true,
+          summaryID: true,
+          annotationID: true,
+          abstract: {
+            select: {
+              id: true,
+              abstractText: true,
+              pmid: true,
+              level: true,
+              created_at: true,
+            }
+          },
+          summary: {
+            select: {
+              id: true,
+              summaryType: true,
+              summary: true,
+              created_at: true,
+            }
           }
+        },
+        orderBy: [
+          { assignedAt: 'asc' },
+          { abstract: { abstractText: 'asc' } },
+        ]
+      })
+
+      console.log(`Found ${userGroupAssignments.length} group assignments for user`)
+
+      // Group assignments by abstract to get 3 summaries per abstract
+      const abstractGroups = new Map()
+      
+      userGroupAssignments.forEach(assignment => {
+        const abstractId = assignment.abstractID
+        if (!abstractGroups.has(abstractId)) {
+          abstractGroups.set(abstractId, {
+            abstract: assignment.abstract,
+            summaries: [],
+            assignments: []
+          })
         }
-      },
-      orderBy: [
-        { textSummary: { text: 'asc' } } ,
-        { textSummary: { level: 'asc' } },
-      ]
-    })
+        
+        const group = abstractGroups.get(abstractId)
+        group.summaries.push(assignment.summary)
+        group.assignments.push(assignment)
+      })
 
-    console.log(`Found ${userSummaries.length} summaries for user`)
+      // Transform the data to match the expected format for ranking page
+      const formattedSummaries = []
+      
+      for (const [abstractId, group] of abstractGroups) {
+        // Create one entry per summary in the group
+        group.summaries.forEach((summary, index) => {
+          const assignment = group.assignments[index]
+          formattedSummaries.push({
+            id: summary.id,
+            text: group.abstract.abstractText,
+            summary: summary.summary,
+            pmid: group.abstract.pmid,
+            level: group.abstract.level,
+            summaryType: summary.summaryType,
+            abstractId: abstractId,
+            assigned_at: assignment.assignedAt,
+            completed: assignment.completed,
+            annotationId: assignment.annotationID
+          })
+        })
+      }
 
-    // Transform the data to match the expected format
-    const formattedSummaries = userSummaries.map(userSummary => ({
-      id: userSummary.textSummary.id,
-      text: userSummary.textSummary.text,
-      summary: userSummary.textSummary.summary,
-      pmid: userSummary.textSummary.pmid,
-      level: userSummary.textSummary.level,
-      model: userSummary.textSummary.model,
-      assigned_at: userSummary.assignedAt,
-      completed: userSummary.completed
-    }))
+      return NextResponse.json({ summaries: formattedSummaries })
 
-    return NextResponse.json({ summaries: formattedSummaries })
+    } catch (groupError) {
+      console.log("Group tables not available, falling back to old system:", groupError)
+      
+      // Fallback to old system
+      const userSummaries = await prisma.userSummary.findMany({
+        where: {
+          userId: targetUserId,
+          assignedAt: assignedAtFilter,
+        },
+        select: {
+          id: true,
+          assignedAt: true,
+          completed: true,
+          textSummary: {
+            select: {
+              id: true,
+              text: true,
+              summary: true,
+              pmid: true,
+              level: true,
+              model: true,
+            }
+          }
+        },
+        orderBy: [
+          { textSummary: { text: 'asc' } } ,
+          { textSummary: { level: 'asc' } },
+        ]
+      })
+
+      console.log(`Found ${userSummaries.length} summaries for user (fallback)`)
+
+      // Transform the data to match the expected format
+      const formattedSummaries = userSummaries.map(userSummary => ({
+        id: userSummary.textSummary.id,
+        text: userSummary.textSummary.text,
+        summary: userSummary.textSummary.summary,
+        pmid: userSummary.textSummary.pmid,
+        level: userSummary.textSummary.level,
+        model: userSummary.textSummary.model,
+        assigned_at: userSummary.assignedAt,
+        completed: userSummary.completed
+      }))
+
+      return NextResponse.json({ summaries: formattedSummaries })
+    }
+
   } catch (error) {
     console.error("Error fetching summaries:", error)
     return NextResponse.json(

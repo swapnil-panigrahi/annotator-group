@@ -61,7 +61,7 @@ export default function SignupPage() {
         throw updateError
       }
 
-      router.push("/annotate")
+      router.push("/ranking")
       router.refresh()
     } catch (err) {
       console.log(err)

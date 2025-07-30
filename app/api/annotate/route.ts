@@ -2,28 +2,9 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
-import { z } from 'zod'
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
-
-const LabelSchema = z.object({
-  text: z.string(),
-  type: z.string(),
-  startIndex: z.number(),
-  endIndex: z.number(),
-  correctedText: z.string().optional()
-})
-
-const AnnotationSchema = z.object({
-  textId: z.string(),
-  comprehensiveness: z.number().min(0).max(5),
-  layness: z.number().min(0).max(5),
-  factuality: z.number().min(0).max(5),
-  usefulness: z.number().min(0).max(5),
-  labels: z.array(LabelSchema).optional()
-})
 
 export async function POST(request: Request) {
   try {
@@ -45,73 +26,150 @@ export async function POST(request: Request) {
         },
       }
     )
-    
-    // Check authentication
     const { data: { session }, error: authError } = await supabase.auth.getSession()
-    if (authError || !session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
+    if (authError) {
+      return NextResponse.json({ error: "Authentication error" }, { status: 401 })
+    }
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "No active session" }, { status: 401 })
     }
 
     const body = await request.json()
-    
-    // Validate request body
-    const validatedData = AnnotationSchema.parse(body)
+    console.log("Received annotation request:", body)
+    const { textId, comprehensiveness, layness, factuality, usefulness, labels, abstractId, summaryId } = body
 
-    // Save annotation to database using a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // Create or update the annotation
-      const annotation = await tx.annotation.upsert({
+    // Check if this is a group annotation (has abstractId and summaryId)
+    if (abstractId && summaryId) {
+      try {
+        console.log("Attempting group annotation for:", { userID: session.user.id, summaryID: summaryId, abstractID: abstractId })
+        
+        // First, check if annotation already exists
+        const existingAnnotation = await prisma.annotationGroup.findFirst({
+          where: {
+            userID: session.user.id,
+            summaryID: summaryId
+          }
+        })
+
+        let annotationGroup
+        if (existingAnnotation) {
+          // Update existing annotation
+          annotationGroup = await prisma.annotationGroup.update({
+            where: { id: existingAnnotation.id },
+            data: {
+              comprehensiveness: comprehensiveness || 0,
+              layness: layness || 0,
+              factuality: factuality || 0,
+              updated_at: new Date()
+            }
+          })
+        } else {
+          // Create new annotation
+          annotationGroup = await prisma.annotationGroup.create({
+            data: {
+              userID: session.user.id,
+              abstractID: abstractId,
+              summaryID: summaryId,
+              comprehensiveness: comprehensiveness || 0,
+              layness: layness || 0,
+              factuality: factuality || 0
+            }
+          })
+        }
+
+        console.log("Created/updated annotation group:", annotationGroup.id)
+
+        // Update UserGroup to mark as completed
+        await prisma.userGroup.updateMany({
+          where: {
+            userID: session.user.id,
+            summaryID: summaryId,
+            abstractID: abstractId
+          },
+          data: {
+            completed: true,
+            annotationID: annotationGroup.id
+          }
+        })
+
+        console.log("Updated user group assignments")
+        return NextResponse.json({ success: true, annotationId: annotationGroup.id })
+      } catch (groupError) {
+        console.error("Group annotation failed, falling back to individual annotation:", groupError)
+        // Fall back to individual annotation if group tables don't exist
+        const annotation = await prisma.annotation.upsert({
+          where: {
+            userId_textSummaryId: {
+              userId: session.user.id,
+              textSummaryId: summaryId
+            }
+          },
+          update: {
+            comprehensiveness: comprehensiveness || 0,
+            layness: layness || 0,
+            factuality: factuality || 0,
+            usefulness: usefulness || 0,
+            labels: labels || null,
+            updatedAt: new Date()
+          },
+          create: {
+            userId: session.user.id,
+            textSummaryId: summaryId,
+            comprehensiveness: comprehensiveness || 0,
+            layness: layness || 0,
+            factuality: factuality || 0,
+            usefulness: usefulness || 0,
+            labels: labels || null
+          }
+        })
+
+        return NextResponse.json({ success: true, annotationId: annotation.id })
+      }
+    } else {
+      // Handle individual annotation (existing logic)
+      console.log("Handling individual annotation for textId:", textId)
+      const annotation = await prisma.annotation.upsert({
         where: {
           userId_textSummaryId: {
             userId: session.user.id,
-            textSummaryId: validatedData.textId
+            textSummaryId: textId
           }
         },
         update: {
-          comprehensiveness: validatedData.comprehensiveness,
-          layness: validatedData.layness,
-          factuality: validatedData.factuality,
-          usefulness: validatedData.usefulness,
-          labels: validatedData.labels as Prisma.InputJsonValue
+          comprehensiveness: comprehensiveness || 0,
+          layness: layness || 0,
+          factuality: factuality || 0,
+          usefulness: usefulness || 0,
+          labels: labels || null,
+          updatedAt: new Date()
         },
         create: {
           userId: session.user.id,
-          textSummaryId: validatedData.textId,
-          comprehensiveness: validatedData.comprehensiveness,
-          layness: validatedData.layness,
-          factuality: validatedData.factuality,
-          usefulness: validatedData.usefulness,
-          labels: validatedData.labels as Prisma.InputJsonValue
+          textSummaryId: textId,
+          comprehensiveness: comprehensiveness || 0,
+          layness: layness || 0,
+          factuality: factuality || 0,
+          usefulness: usefulness || 0,
+          labels: labels || null
         }
       })
 
-      // Update the user-summary assignment
-      await tx.userSummary.updateMany({
+      // Update UserSummary to mark as completed
+      await prisma.userSummary.updateMany({
         where: {
           userId: session.user.id,
-          summaryId: validatedData.textId
+          summaryId: textId
         },
         data: {
           completed: true,
-          annotationId: annotation.id
+          annotationID: annotation.id
         }
       })
 
-      return annotation
-    })
-
-    return NextResponse.json({ success: true, annotation: result })
-  } catch (error) {
-    console.error("Annotation error:", error)
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: error.errors[0].message },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: true, annotationId: annotation.id })
     }
+  } catch (error) {
+    console.error("Error saving annotation:", error)
     return NextResponse.json(
       { error: "Failed to save annotation" },
       { status: 500 }
